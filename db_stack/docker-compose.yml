@@ -1,0 +1,17 @@
+name: postgres-stack
+services:
+  db:
+    image: pguam:18.4
+    container_name: uamdb
+    ports:
+      - "${PG_PORT}:5432"
+    environment:
+      # postgresql://uam_user:uam_password@127.0.0.1:3081/uam_db
+      POSTGRES_USER: ${PG_USER}
+      POSTGRES_PASSWORD: ${PG_PASSWORD}
+      POSTGRES_DB: ${PG_DB}
+    volumes:
+      - uam_data:/var/lib/postgresql
+      - ./create_extension.sql:/docker-entrypoint-initdb.d/0-create_extension.sql
+volumes:
+  uam_data:

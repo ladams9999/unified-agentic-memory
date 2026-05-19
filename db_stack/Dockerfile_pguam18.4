@@ -1,0 +1,45 @@
+# Use the official PostgreSQL 18.4 image as the base
+FROM postgres:18.4
+
+# Install build dependencies and extension packages
+RUN apt-get update && apt-get install -y \
+    build-essential \
+    git \
+    postgresql-server-dev-18 \
+    vim \
+    wget \
+    ca-certificates \
+    flex \
+    bison \
+    postgresql-18-cron
+
+# Update vulnerable packages where possible
+RUN apt-get update && apt-get upgrade -y \
+    libxslt1.1 \
+    || true
+
+# Clone and build pgvector
+RUN git clone https://github.com/pgvector/pgvector.git \
+    && cd pgvector \
+    && make \
+    && make install \
+    && cd .. \
+    && rm -rf pgvector
+
+# Clone and build Apache AGE from master
+RUN git clone https://github.com/apache/age.git \
+    && cd age \
+    && make \
+    && make install \
+    && cd .. \
+    && rm -rf age
+
+# Clean up build dependencies but keep vim
+RUN apt-get remove -y build-essential git postgresql-server-dev-18 wget flex bison \
+    && apt-get autoremove -y \
+    && apt-get clean \
+    && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
+
+# Configure PostgreSQL to preload TimescaleDB and pg_cron
+RUN echo "shared_preload_libraries = 'timescaledb,pg_cron'" >> /usr/share/postgresql/postgresql.conf.sample
+RUN echo "cron.database_name = 'postgres'" >> /usr/share/postgresql/postgresql.conf.sample
