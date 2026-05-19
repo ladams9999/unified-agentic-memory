@@ -19,7 +19,7 @@ Build a single, shared memory layer for coding agents across Claude Code, Codex,
 ┌──────────────────────────────────────────────────┐
 │                  Harness Layer                   │
 │  Claude Code │ Codex │ Copilot │ Warp (skill)   │
-│     hooks    │ hooks │  hooks  │  MCP + skill    │
+│     hooks    │ hooks │  hooks  │   skill + CLI   │
 └──────┬───────┴───┬───┴────┬────┴───────┬─────────┘
        │           │        │            │
        ▼           ▼        ▼            ▼
@@ -39,9 +39,11 @@ Build a single, shared memory layer for coding agents across Claude Code, Codex,
 ```
 ## Phase 1: Database Schema & Core Library
 ### 1a. Database Schema
+* **Relational source of truth**: Event data is stored in relational tables first. AGE is used for graph projection and traversal queries, not as the only source of event text.
 * **Graph (AGE)**: Create a graph `uam` with vertex labels: `Session`, `Event`, `Memory`. Edge labels: `NEXT_EVENT` (linked list within session), `HAS_EVENT` (session → first event), `REMEMBERS` (session → memory references).
+* **Events table**: `uam.events` — append-only event log with `id UUID PRIMARY KEY, session_id UUID, client TEXT, agent_name TEXT, model_name TEXT, event_name TEXT, tool_name TEXT, tool_input JSONB, user_prompt TEXT, cwd TEXT, occurred_at TIMESTAMPTZ, payload_schema_version TEXT, raw_payload JSONB NOT NULL, created_at TIMESTAMPTZ`.
 * **Vector table**: `uam.embeddings` — `id UUID PRIMARY KEY, event_id UUID, embedding vector(768), content TEXT, metadata JSONB, created_at TIMESTAMPTZ`.
-* **Full-text search**: GIN index with `pg_trgm` + `tsvector` columns on event content and memory content.
+* **Full-text search**: GIN index with `pg_trgm` + `tsvector` columns on relational event content and memory content.
 * **Memories table**: `uam.memories` — `id UUID PRIMARY KEY, path TEXT UNIQUE NOT NULL, frontmatter JSONB, content TEXT, embedding vector(768), created_at TIMESTAMPTZ, updated_at TIMESTAMPTZ`. The `path` is the semantic wiki path (e.g., `profile/role.md`, `tools/bash/common-flags.md`). Memories mirror the markdown file archive concept from the article, but stored in DB rather than on disk. The `uam_data/` directory is reserved for a potential on-disk sync of these memories.
 * **UUID7**: Use Python 3.14's built-in `uuid.uuid7()` — no third-party package needed.
 ### 1b. Core Python Library (`uam/`)
@@ -62,6 +64,8 @@ uam/
 ```
 * Use `uv` for project management with `pyproject.toml`, `requires-python = ">=3.14"`.
 * Use `psycopg[binary]` (psycopg3) for Postgres access — it supports both sync and async, and works well on Windows. AGE queries via raw SQL: `SELECT * FROM cypher('uam', $$ ... $$) AS (result agtype)`.
+* Event ingestion is lossless: keep full raw hook payloads plus normalized columns to preserve forward migration options.
+* Keep event rows append-only in v1 to simplify replay, projection, and schema evolution.
 * Design all service interfaces (embeddings, LLM, DB) behind abstract base classes so non-local providers can be swapped in later without changing calling code.
 ## Phase 2: Hook System
 ### Hook contract (cross-harness)
@@ -76,9 +80,9 @@ All hooks are thin shell/Python scripts that:
 * **GitHub Copilot**: `.github/hooks/*.json` with bash/powershell commands. Same handler with `--client copilot`. Events: `sessionStart`, `userPromptSubmitted`, `preToolUse`, `postToolUse`, `agentStop`, `sessionEnd`.
 * **Warp**: No hook system. Build a Warp skill (SKILL.md) that instructs the agent to use CLI commands (`python -m uam.cli search`, `python -m uam.cli store`, etc.) directly via shell. This avoids the overhead of an MCP server and uses Warp's existing Bash tool — the skill tells the agent when and how to call the CLI. Note: skills are instructions consumed by the LLM, so they don't bypass LLM calls, but they avoid the need for a separate MCP server setup for Warp.
 ### Key design point
-Hooks must be fast and deterministic — no LLM calls. They only log events and inject pre-computed memories. The `SessionStart` hook loads profile memories. The `UserPromptSubmit` hook runs a quick vector search for relevant memories and appends them.
+Hooks must be fast and deterministic — no LLM calls. They only log events and inject pre-computed memories. The `SessionStart` hook loads profile memories. The `UserPromptSubmit` hook runs a quick vector search for relevant memories and appends them. In v1, latency targets are measurement-first: instrument hook duration and set budgets after collecting local p50/p95 data.
 ## Phase 3: Dream Phase
-* A CLI command (`python -m uam.dream`) and a pg_cron scheduled job.
+* A CLI command (`python -m uam.dream`) with pg_cron installed and available. Scheduling policy is deferred until behavior and cadence are validated.
 * Reads all events since the last watermark (stored in a `uam.dream_runs` table).
 * Sends events + current memory store to Ollama (local model, starting with the chosen small model).
 * The model produces/updates markdown memories at semantic paths with YAML frontmatter.
@@ -94,7 +98,7 @@ Small local models (7B-14B) may struggle with the merge/distill task. The plan s
 * **Hybrid**: Combine results, deduplicate by ID, rerank using Reciprocal Rank Fusion (RRF) or a simple score merge. Truncate to top-k.
 * **Caching**: Cache search results keyed by query hash, invalidate on dream phase completion. Use a simple `uam.search_cache` table with TTL.
 ## Phase 5: MCP Server
-Expose UAM as an MCP server so any harness (including Warp) can interact with memories:
+Expose UAM as an MCP server so compatible harnesses can interact with memories. In v1, Warp remains CLI-skill based:
 * `uam_search(query, scope, limit)` — search events, memories, or both
 * `uam_store(path, content, frontmatter)` — create/update a memory
 * `uam_get(path)` — retrieve a specific memory
@@ -128,3 +132,6 @@ The most effective split is **two parallel tracks** after Phase 0:
 * **Embedding model**: `nomic-embed-text` (768-dim vectors).
 * **Memory path taxonomy**: Dream phase infers paths organically. The markdown wiki structure (paths, frontmatter, content) is replicated entirely in the `uam.memories` table — no filesystem-based memory store.
 * **Dream phase scheduling**: A CLI entrypoint (`uv run uam dream`) that is self-contained: it starts the DB stack (docker compose up) if not running, runs the dream phase, and optionally shuts it down after. This script can be called from Windows Task Scheduler, a cron job, or a `SessionEnd` hook. No long-running scheduler process required.
+* **Event source of truth**: Store events relationally in an append-only table with raw payload + normalized fields; project to AGE for graph traversal.
+* **Warp integration**: v1 is Warp skill + CLI only.
+* **Security stance for v1**: local single-user assumptions; hardening is elevated when remote resources or multi-user access are introduced.

@@ -5,12 +5,13 @@ Build a single, shared memory layer for work across multiple coding agents: Clau
 ## Setup
 
 - Postgres with pgvector for vector storage
-- Postgres with Apache AGE for graph storage
+- Postgres relational tables as source-of-truth event storage
+- Postgres with Apache AGE for graph projection and traversal
 - Ollama using `nomic-embed-text` for embeddings
 - Ollama using `Mistral 7B`, `Phi-4`, or `SmolLM3` (TBD) for prose work
 - Python
 - uv to manage project
-- 
+- pg_cron installed and available (scheduling policy deferred)
 
 ## Hooks
 
@@ -31,15 +32,31 @@ Each hook will receive a JSON payload on stdin, which should include:
 
 Each hook can also emit JSON on stdout to inject additional context back into the conversation.
 
-There will need to skill sets for Claude Code, Codex, Github Copilot, and Warp
+Hooks should be deterministic and model-free. Initial latency targets are measurement-first: capture local timing metrics (p50/p95) and set strict budgets after observing real runs.
+
+There will need to be skill sets for Claude Code, Codex, Github Copilot, and Warp.
+
+Warp v1 integration is skill + CLI only.
 
 ## Shared memory layer
 
 UUID7 for event ID
 
+### Relational event store (source of truth)
+
+All incoming hook events are stored in an append-only relational table with:
+
+- Raw payload JSONB (lossless copy of input)
+- Normalized query fields (session ID, client, agent/model, event name, tool details, prompt, cwd, timestamps)
+- Payload schema version for forward migrations
+
+This preserves all delivered information for future schema evolution and replay.
+
 ### Graph db
 
 In the graph database, each agent session is a node, connected to a linked list of event nodes (one per hook invocation). Events are typed by the event that triggered them (SessionStart, UserPromptSubmit, PreToolUse, PostToolUse, and Stop).
+
+The graph is projected from relational events and can be rebuilt from the append-only event table if schema or graph shape changes.
 
 ### Vector db
 
@@ -54,11 +71,11 @@ Re-running the indexer updates memories that already have an ID in the collectio
 
 ### Full text search
 
-Each event and memory will be indexed for full text search
+Each relational event and memory will be indexed for full text search.
 
 ## Dream Phase
 
-A periodic batch job that extracts facts from sessions, summarizes what happened, and updates the graph.  It should run every few hours, or after session end where supported, reading the events accumulated since last run, and writes back to the memory store.
+A periodic batch job that extracts facts from sessions, summarizes what happened, and updates memory state. pg_cron is available; specific cadence is deferred for v1 and can be run manually, from session end hooks, or scheduled later.
 
 The batch job pulls every event since last run, and hands them to the model with the current memory store, and is asked to write back a small set of durable notes, imitating a markdown wiki.  Each memory is a file at a semantic path, with YAML frontmatter on top and regular text below.  The model will merge rather than append, and if something new contradicts an old note, the old note gets rewritten.
 
@@ -68,7 +85,8 @@ Besides receiving data from the hooks, a model can search for relevant memories,
 
 ## Summary
 
-- Hooks passively log every event into graph storage, without model calls.
+- Hooks passively log every event to relational source-of-truth storage, without model calls.
+- Graph views are projected from relational events for traversal and relationship queries.
 - Dream Phase reads accumulated events, distilling them into durable markdown memories.  Memories are organized by topic, and merged rather than appended.
 - Injection on session start from any harness, profile memories are loaded into context. On user prompt, relevant memories are searched and appended automatically
 
@@ -81,6 +99,8 @@ Searches will be cached until the next dream phase.  Some searches will then be 
 ## Usage
 
 Besides the CLI and MCP, there will be an api and simple web interface.  The web interface will have a search with all options, a browser for sessions and memories, and show stats and some log data. 
+
+In v1, Warp uses skill + CLI instead of MCP.
 
 ### pguam18.4
 

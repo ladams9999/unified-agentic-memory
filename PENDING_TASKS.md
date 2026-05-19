@@ -27,12 +27,18 @@ Tasks below break work into small, individually pickable work items. Paths are r
 - [ ] **P0-7** Run `uv init` to create `pyproject.toml` with `requires-python = ">=3.14"`. Run `uv python install 3.14`.
   - Verify: `uv run python -c "import uuid; print(uuid.uuid7())"` succeeds.
 
+- [ ] **P0-8** Add migration baseline for schema versioning (e.g., `db_stack/migrations/` and a simple migrate runner command).
+  - Verify: Initial migration can be applied to a fresh DB and recorded in a schema history table.
+
 ---
 
 ## Phase 1a: Database Schema
 
 - [ ] **P1a-1** Create `db_stack/schema.sql` defining the AGE graph `uam` with vertex labels `Session`, `Event`, `Memory` and edge labels `NEXT_EVENT`, `HAS_EVENT`, `REMEMBERS`.
   - Verify: After running against the DB, `SELECT * FROM ag_catalog.ag_graph` shows the `uam` graph.
+
+- [ ] **P1a-1b** Create `db_stack/schema.sql` section for append-only `uam.events` relational source-of-truth table with raw payload + normalized fields.
+  - Verify: `\d uam.events` shows columns including `raw_payload JSONB NOT NULL`, `payload_schema_version`, and timestamp fields.
 
 - [ ] **P1a-2** Create `db_stack/schema.sql` section for the `uam.memories` table: `id UUID PK, path TEXT UNIQUE NOT NULL, frontmatter JSONB, content TEXT, embedding vector(768), created_at TIMESTAMPTZ, updated_at TIMESTAMPTZ`.
   - Verify: `\d uam.memories` shows all columns with correct types.
@@ -46,8 +52,11 @@ Tasks below break work into small, individually pickable work items. Paths are r
 - [ ] **P1a-5** Create `db_stack/schema.sql` section for the `uam.search_cache` table: `query_hash TEXT PK, results JSONB, created_at TIMESTAMPTZ, ttl_seconds INT`.
   - Verify: `\d uam.search_cache` shows all columns.
 
-- [ ] **P1a-6** Add GIN indexes for full-text search: `tsvector` column + GIN index on `uam.memories.content` and a similar approach for event content stored in AGE vertex properties.
+- [ ] **P1a-6** Add GIN indexes for full-text search: `tsvector` column + GIN index on `uam.memories.content` and relational event content in `uam.events`.
   - Verify: `\di` shows the GIN indexes.
+
+- [ ] **P1a-8** Add indexes for operational event queries on `uam.events` (`session_id`, `occurred_at`, `event_name`, and optional `client`).
+  - Verify: `\di uam.*events*` shows expected btree indexes.
 
 - [ ] **P1a-7** Add `db_stack/schema.sql` to docker-compose init (mount into `/docker-entrypoint-initdb.d/` after extension creation).
   - Verify: Fresh `docker compose up` creates all tables and the graph.
@@ -80,6 +89,12 @@ Tasks below break work into small, individually pickable work items. Paths are r
 - [ ] **P1b-8** Create `uam/events.py` with `log_event(hook_event: HookEvent)` that writes to the AGE graph and the embeddings table.
   - Verify: Unit test logs an event and confirms it appears in both graph and vector store.
 
+- [ ] **P1b-10** Update `uam/events.py` so `log_event()` writes first to `uam.events` (raw + normalized), then updates AGE projection and embeddings.
+  - Verify: Unit test confirms one logged event exists in `uam.events` and can be projected to graph.
+
+- [ ] **P1b-11** Create `uam/projection.py` with routines to project relational events to AGE nodes/edges (`Session`, `Event`, `NEXT_EVENT`, `HAS_EVENT`).
+  - Verify: Unit test replays relational events and produces expected graph topology.
+
 - [ ] **P1b-9** Create `uam/cli.py` with Click/Typer CLI exposing subcommands: `search`, `store`, `get`, `delete`, `list`, `sessions`, `dream`.
   - Verify: `uv run python -m uam.cli --help` shows all subcommands.
 
@@ -92,6 +107,9 @@ Tasks below break work into small, individually pickable work items. Paths are r
 
 - [ ] **P2-2** Create `uam/hooks/injector.py` with functions for `SessionStart` (load profile memories) and `UserPromptSubmit` (vector search for relevant memories). Returns JSON on stdout.
   - Verify: Unit test with seeded memories returns expected JSON output.
+
+- [ ] **P2-7** Add hook instrumentation for latency/error metrics (local logs with p50/p95 summaries by event type).
+  - Verify: Running sample hook calls emits timing metrics and aggregated summary output.
 
 - [ ] **P2-3** Create Claude Code hook config template at `hooks/claude-code/settings.json` with `SessionStart`, `UserPromptSubmit`, `PreToolUse`, `PostToolUse`, `Stop`, `SessionEnd` entries.
   - Verify: JSON is valid and references correct handler paths.
@@ -124,6 +142,12 @@ Tasks below break work into small, individually pickable work items. Paths are r
 - [ ] **P3-5** After dream phase completes, invalidate search cache (truncate `uam.search_cache`).
   - Verify: Cache table is empty after a dream run.
 
+- [ ] **P3-6** Add pg_cron smoke test task to verify extension availability and successful execution of a harmless scheduled SQL command.
+  - Verify: Smoke test shows job execution in pg_cron metadata tables.
+
+- [ ] **P3-7** Document dream scheduling policy as deferred in v1; add config placeholders only (no fixed schedule required).
+  - Verify: README/IMPLEMENTATION note exists and CLI runs without requiring pg_cron schedule setup.
+
 ---
 
 ## Phase 4: Search
@@ -143,6 +167,8 @@ Tasks below break work into small, individually pickable work items. Paths are r
 ---
 
 ## Phase 5: MCP Server
+
+Note: Warp stays CLI-skill based in v1. MCP remains for compatible harnesses and tools.
 
 - [ ] **P5-1** Create `uam/mcp_server.py` using the MCP Python SDK with tool definitions: `uam_search`, `uam_store`, `uam_get`, `uam_delete`, `uam_list`, `uam_sessions`.
   - Verify: `uv run python -m uam.mcp_server` starts without error and responds to MCP handshake.
@@ -202,3 +228,6 @@ Tasks below break work into small, individually pickable work items. Paths are r
 
 - [ ] **P7-8** Update `IMPLEMENTATION.md` with architecture diagram, schema details, and design decisions.
   - Verify: IMPLEMENTATION.md contains architecture overview and schema documentation.
+
+- [ ] **P7-9** Add local bootstrap integration smoke test: fresh startup, schema init, one event log, one search, one dream run dry pass.
+  - Verify: Single command or documented sequence passes on a clean local setup.
