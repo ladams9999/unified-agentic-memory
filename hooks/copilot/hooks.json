@@ -1,0 +1,10 @@
+{
+  "hooks": {
+    "sessionStart": "uv run python -m uam.hooks.handler --client copilot",
+    "userPromptSubmitted": "uv run python -m uam.hooks.handler --client copilot",
+    "preToolUse": "uv run python -m uam.hooks.handler --client copilot",
+    "postToolUse": "uv run python -m uam.hooks.handler --client copilot",
+    "agentStop": "uv run python -m uam.hooks.handler --client copilot",
+    "sessionEnd": "uv run python -m uam.hooks.handler --client copilot"
+  }
+}

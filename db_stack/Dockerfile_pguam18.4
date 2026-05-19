@@ -19,15 +19,15 @@ RUN apt-get update && apt-get upgrade -y \
     || true
 
 # Clone and build pgvector
-RUN git clone https://github.com/pgvector/pgvector.git \
+RUN git clone --branch v0.8.2 --depth 1 https://github.com/pgvector/pgvector.git \
     && cd pgvector \
     && make \
     && make install \
     && cd .. \
     && rm -rf pgvector
 
-# Clone and build Apache AGE from master
-RUN git clone https://github.com/apache/age.git \
+# Clone and build Apache AGE
+RUN git clone --branch PG18/v1.7.0-rc0 --depth 1 https://github.com/apache/age.git \
     && cd age \
     && make \
     && make install \
@@ -40,6 +40,6 @@ RUN apt-get remove -y build-essential git postgresql-server-dev-18 wget flex bis
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
 
-# Configure PostgreSQL to preload TimescaleDB and pg_cron
-RUN echo "shared_preload_libraries = 'timescaledb,pg_cron'" >> /usr/share/postgresql/postgresql.conf.sample
+# Configure PostgreSQL to preload pg_cron
+RUN echo "shared_preload_libraries = 'pg_cron'" >> /usr/share/postgresql/postgresql.conf.sample
 RUN echo "cron.database_name = 'postgres'" >> /usr/share/postgresql/postgresql.conf.sample

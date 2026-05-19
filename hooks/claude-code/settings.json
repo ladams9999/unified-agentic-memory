@@ -1,0 +1,10 @@
+{
+  "hooks": {
+    "SessionStart": "uv run python -m uam.hooks.handler --client claude-code",
+    "UserPromptSubmit": "uv run python -m uam.hooks.handler --client claude-code",
+    "PreToolUse": "uv run python -m uam.hooks.handler --client claude-code",
+    "PostToolUse": "uv run python -m uam.hooks.handler --client claude-code",
+    "Stop": "uv run python -m uam.hooks.handler --client claude-code",
+    "SessionEnd": "uv run python -m uam.hooks.handler --client claude-code"
+  }
+}
