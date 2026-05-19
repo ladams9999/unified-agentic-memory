@@ -3,7 +3,7 @@ name = "unified-agentic-memory"
 version = "0.1.0"
 description = "Unified agentic memory across coding harnesses"
 readme = "README.md"
-requires-python = ">=3.14"
+requires-python = ">=3.13"
 dependencies = [
     "fastapi>=0.115.0",
     "httpx>=0.28.0",
@@ -13,6 +13,7 @@ dependencies = [
     "pydantic>=2.11.0",
     "pydantic-settings>=2.10.0",
     "typer>=0.16.0",
+    "uuid6>=2025.0.1",
     "uvicorn>=0.35.0",
 ]
 

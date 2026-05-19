@@ -35,8 +35,3 @@ The items below are still open because they need live Docker/Ollama-backed verif
 - [ ] **P6-5** Validate the session browser UI against the API.
 - [ ] **P6-6** Validate the stats dashboard UI against the API.
 - [ ] **P7-9** Run the full documented local smoke sequence on a clean machine.
-
-## Follow-up implementation cleanup
-
-- [ ] **P1b-1** Replace the lightweight model shim with native Pydantic models once Python 3.14 beta compatibility lands cleanly upstream.
-- [ ] **P1b-2** Replace the lightweight settings loader with native `pydantic-settings` once Python 3.14 beta compatibility lands cleanly upstream.

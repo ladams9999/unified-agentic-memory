@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import re
-import uuid
 from datetime import datetime, timezone
 from typing import Any
 
@@ -10,6 +9,7 @@ from .embeddings import EmbeddingProvider
 from .llm import LLMProvider, OllamaLLMProvider
 from .memories import list_memories, upsert_memory
 from .models import DreamRun, Memory
+from .uuids import uuid7
 
 DREAM_OUTPUT_FORMAT = """
 Output one or more fenced memory blocks in the exact format:
@@ -73,7 +73,7 @@ def run_dream(
     dry_run: bool = False,
 ) -> DreamRun:
     started_at = datetime.now(timezone.utc)
-    dream_id = uuid.uuid7()
+    dream_id = uuid7()
     with get_connection(conn) as active:
         watermark_row = active.execute(
             "SELECT MAX(watermark) FROM uam.dream_runs WHERE watermark IS NOT NULL"

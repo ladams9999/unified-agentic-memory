@@ -1,11 +1,11 @@
 from __future__ import annotations
 
-import uuid
 from typing import Any
 
 from .db import get_connection
 from .embeddings import EmbeddingProvider, OllamaEmbeddingProvider
 from .models import Memory
+from .uuids import uuid7
 
 
 def _memory_from_row(row: Any) -> Memory:
@@ -39,7 +39,7 @@ def upsert_memory(
         ).fetchone()
         provider = embedder or OllamaEmbeddingProvider()
         embedding = existing[4] if existing and existing[3] == content else provider.embed(content)
-        memory_id = existing[0] if existing else uuid.uuid7()
+        memory_id = existing[0] if existing else uuid7()
 
         active.execute(
             """

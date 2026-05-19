@@ -1,9 +1,5 @@
 from __future__ import annotations
 
-from .compat import patch_typing_eval_type
-
-patch_typing_eval_type()
-
 from fastapi import FastAPI, HTTPException, Query
 
 from .db import get_connection

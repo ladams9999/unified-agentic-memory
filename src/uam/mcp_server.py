@@ -1,9 +1,5 @@
 from __future__ import annotations
 
-from .compat import patch_typing_eval_type
-
-patch_typing_eval_type()
-
 from mcp.server.fastmcp import FastMCP
 
 from .dream import run_dream

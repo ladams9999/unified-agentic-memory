@@ -12,7 +12,7 @@ Unified Agentic Memory (UAM) is a local-first memory layer for multiple coding h
 6. Start the API with `uv run uvicorn uam.api:app --reload`.
 7. Start the frontend with `cd frontend && npm install && npm run dev`.
 
-Python is pinned to `>=3.14` because the project uses `uuid.uuid7()`. The current implementation includes a small runtime compatibility shim for third-party packages that still lag behind Python 3.14 beta internals.
+Python is pinned to `>=3.13`. UUID7 generation comes from the `uuid6` package (`uuid6.uuid7()`), which avoids relying on Python 3.14-only stdlib support.
 
 ## Usage
 

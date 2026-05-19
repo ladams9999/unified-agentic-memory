@@ -15,8 +15,8 @@ Dream phase -> uam.dream.run_dream -> LLM -> parsed memory blocks -> uam.memorie
 ## Runtime layout
 
 - `src/uam/`
-  - `models.py`: lightweight typed models with `model_dump` compatibility helpers
-  - `config.py`: environment-backed settings
+  - `models.py`: Pydantic models for events, memories, search results, and dream runs
+  - `config.py`: `pydantic-settings` environment-backed settings
   - `db.py`: psycopg pool, AGE setup, migration runner
   - `events.py`: append-only relational ingest plus projection and embedding
   - `graph.py`: AGE Cypher helpers
@@ -125,3 +125,7 @@ The test suite stays local and deterministic:
 - dream tests mock the LLM and memory upserts
 
 This keeps unit coverage fast while leaving the README smoke sequence for full local Docker-backed verification.
+
+## Python runtime note
+
+The project targets Python 3.13. UUID7 generation is provided through the `uuid6` package, which keeps the codebase off Python 3.14 beta-specific runtime behavior and avoids the compatibility shim that was temporarily needed for FastAPI and MCP imports.

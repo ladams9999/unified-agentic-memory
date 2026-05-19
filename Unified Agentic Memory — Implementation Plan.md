@@ -5,7 +5,7 @@ Build a single, shared memory layer for coding agents across Claude Code, Codex,
 * **Database stack**: Docker-based Postgres 18 image (`pguam:18.4`) with pgvector, Apache AGE, pg_cron. Working setup copied from another running instance.
 * **Directories**: `db_stack/` for Docker/DB config, `db_data/` for Postgres data volume, `uam_data/` reserved for potential markdown file archive.
 * **Project docs**: Scaffolding only — no application code yet.
-* **Python**: Target Python 3.14 via `uv`. This gives us built-in `uuid.uuid7()` (RFC 9562) — no third-party UUID package needed.
+* **Python**: Target Python 3.13 via `uv`. Use the `uuid6` package for `uuid7()` support instead of depending on Python 3.14 stdlib support.
 ## Phase 0: Fixes & Project Init
 1. **Dockerfile: TimescaleDB reference** — Remove `timescaledb` from `shared_preload_libraries`; keep only `pg_cron`.
 2. **Dockerfile: AGE branch** — Pin to `PG18/v1.7.0-rc0` release tag with `--depth 1`.
@@ -13,7 +13,7 @@ Build a single, shared memory layer for coding agents across Claude Code, Codex,
 4. **docker-compose.yml: volume** — Map Postgres data to `./db_data/` instead of a named volume. Keep `uam_data/` for the potential markdown file archive.
 5. **.env handling** — Copy `.env` → `.env.example` (committed). Add `.env` to `.gitignore`. Remove `.env` from git tracking.
 6. **PG image tag** — Trust existing `postgres:18.4` for now; fall back to an earlier 18.x if build fails.
-7. **Project init** — `uv init` with `requires-python = ">=3.14"`, `uv python install 3.14`.
+7. **Project init** — `uv init` with `requires-python = ">=3.13"`, `uv python install 3.13`.
 ## Architecture Overview
 ```warp-runnable-command
 ┌──────────────────────────────────────────────────┐
@@ -45,7 +45,7 @@ Build a single, shared memory layer for coding agents across Claude Code, Codex,
 * **Vector table**: `uam.embeddings` — `id UUID PRIMARY KEY, event_id UUID, embedding vector(768), content TEXT, metadata JSONB, created_at TIMESTAMPTZ`.
 * **Full-text search**: GIN index with `pg_trgm` + `tsvector` columns on relational event content and memory content.
 * **Memories table**: `uam.memories` — `id UUID PRIMARY KEY, path TEXT UNIQUE NOT NULL, frontmatter JSONB, content TEXT, embedding vector(768), created_at TIMESTAMPTZ, updated_at TIMESTAMPTZ`. The `path` is the semantic wiki path (e.g., `profile/role.md`, `tools/bash/common-flags.md`). Memories mirror the markdown file archive concept from the article, but stored in DB rather than on disk. The `uam_data/` directory is reserved for a potential on-disk sync of these memories.
-* **UUID7**: Use Python 3.14's built-in `uuid.uuid7()` — no third-party package needed.
+* **UUID7**: Use `uuid6.uuid7()` on Python 3.13.
 ### 1b. Core Python Library (`uam/`)
 Structure:
 ```warp-runnable-command
@@ -62,7 +62,7 @@ uam/
   embeddings.py      # Ollama nomic-embed-text client
   models.py          # Pydantic models for events, memories, payloads
 ```
-* Use `uv` for project management with `pyproject.toml`, `requires-python = ">=3.14"`.
+* Use `uv` for project management with `pyproject.toml`, `requires-python = ">=3.13"`.
 * Use `psycopg[binary]` (psycopg3) for Postgres access — it supports both sync and async, and works well on Windows. AGE queries via raw SQL: `SELECT * FROM cypher('uam', $$ ... $$) AS (result agtype)`.
 * Event ingestion is lossless: keep full raw hook payloads plus normalized columns to preserve forward migration options.
 * Keep event rows append-only in v1 to simplify replay, projection, and schema evolution.

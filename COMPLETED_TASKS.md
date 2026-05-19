@@ -12,7 +12,7 @@ The items below were completed and verified in this implementation pass.
 - [x] **P0-4** Update `db_stack/docker-compose.yml` to bind-mount `./db_data/` for Postgres data instead of a named volume.
 - [x] **P0-5** Copy `db_stack/.env` to `db_stack/.env.example`, ignore `db_stack/.env`, and prepare it for removal from git tracking.
 - [x] **P0-6** Create the project `.gitignore` with local environment, Python, Node, and Postgres bind-mount exclusions.
-- [x] **P0-7** Initialize the `uv` project, pin Python 3.14, and verify `uuid.uuid7()`.
+- [x] **P0-7** Initialize the `uv` project, pin Python 3.13, add `uuid6`, and verify UUID7 generation.
 
 ## Phase 1b: Core Python Library
 

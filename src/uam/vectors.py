@@ -1,9 +1,9 @@
 from __future__ import annotations
 
-import uuid
 from typing import Any
 
 from .models import SearchResult
+from .uuids import uuid7
 
 
 def store_embedding(
@@ -14,7 +14,7 @@ def store_embedding(
     embedding: list[float],
     metadata: dict[str, Any] | None = None,
 ) -> uuid.UUID:
-    embedding_id = uuid.uuid7()
+    embedding_id = uuid7()
     conn.execute(
         """
         INSERT INTO uam.embeddings (id, event_id, embedding, content, metadata)
