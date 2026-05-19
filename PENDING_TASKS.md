@@ -3,3 +3,202 @@
 Tasks below break work into small, individually pickable work items. Paths are relative to this file unless noted.
 
 ---
+
+## Phase 0: Fixes & Project Init
+
+- [ ] **P0-1** Remove `timescaledb` from `shared_preload_libraries` in `db_stack/Dockerfile_pguam18.4`; keep only `pg_cron`.
+  - Verify: Line reads `shared_preload_libraries = 'pg_cron'`.
+
+- [ ] **P0-2** Pin Apache AGE clone to `PG18/v1.7.0-rc0` tag with `--depth 1` in `db_stack/Dockerfile_pguam18.4`.
+  - Verify: `git clone --branch PG18/v1.7.0-rc0 --depth 1 https://github.com/apache/age.git`.
+
+- [ ] **P0-3** Add pg_cron extension creation. Because pg_cron must be created in the `postgres` database, add a separate init script (e.g., `db_stack/create_pgcron.sh`) that runs `CREATE EXTENSION IF NOT EXISTS pg_cron;` against the `postgres` DB.
+  - Verify: After container start, `\dx` in the `postgres` DB shows `pg_cron`.
+
+- [ ] **P0-4** Update `db_stack/docker-compose.yml` to bind-mount `./db_data/` for Postgres data instead of the named `uam_data` volume.
+  - Verify: `docker compose up` writes data to `./db_data/`.
+
+- [ ] **P0-5** Copy `db_stack/.env` to `db_stack/.env.example`. Add `db_stack/.env` to `.gitignore`. Remove `db_stack/.env` from git tracking (`git rm --cached`).
+  - Verify: `git status` shows `.env` untracked; `.env.example` is committed.
+
+- [ ] **P0-6** Create `.gitignore` at project root with entries for `.env`, `db_data/`, `__pycache__/`, `.venv/`, `*.pyc`, `node_modules/`, `.uv/`.
+  - Verify: File exists and listed patterns are ignored.
+
+- [ ] **P0-7** Run `uv init` to create `pyproject.toml` with `requires-python = ">=3.14"`. Run `uv python install 3.14`.
+  - Verify: `uv run python -c "import uuid; print(uuid.uuid7())"` succeeds.
+
+---
+
+## Phase 1a: Database Schema
+
+- [ ] **P1a-1** Create `db_stack/schema.sql` defining the AGE graph `uam` with vertex labels `Session`, `Event`, `Memory` and edge labels `NEXT_EVENT`, `HAS_EVENT`, `REMEMBERS`.
+  - Verify: After running against the DB, `SELECT * FROM ag_catalog.ag_graph` shows the `uam` graph.
+
+- [ ] **P1a-2** Create `db_stack/schema.sql` section for the `uam.memories` table: `id UUID PK, path TEXT UNIQUE NOT NULL, frontmatter JSONB, content TEXT, embedding vector(768), created_at TIMESTAMPTZ, updated_at TIMESTAMPTZ`.
+  - Verify: `\d uam.memories` shows all columns with correct types.
+
+- [ ] **P1a-3** Create `db_stack/schema.sql` section for the `uam.embeddings` table: `id UUID PK, event_id UUID, embedding vector(768), content TEXT, metadata JSONB, created_at TIMESTAMPTZ`.
+  - Verify: `\d uam.embeddings` shows all columns.
+
+- [ ] **P1a-4** Create `db_stack/schema.sql` section for the `uam.dream_runs` table: `id UUID PK, started_at TIMESTAMPTZ, completed_at TIMESTAMPTZ, events_processed INT, memories_updated INT, watermark TIMESTAMPTZ`.
+  - Verify: `\d uam.dream_runs` shows all columns.
+
+- [ ] **P1a-5** Create `db_stack/schema.sql` section for the `uam.search_cache` table: `query_hash TEXT PK, results JSONB, created_at TIMESTAMPTZ, ttl_seconds INT`.
+  - Verify: `\d uam.search_cache` shows all columns.
+
+- [ ] **P1a-6** Add GIN indexes for full-text search: `tsvector` column + GIN index on `uam.memories.content` and a similar approach for event content stored in AGE vertex properties.
+  - Verify: `\di` shows the GIN indexes.
+
+- [ ] **P1a-7** Add `db_stack/schema.sql` to docker-compose init (mount into `/docker-entrypoint-initdb.d/` after extension creation).
+  - Verify: Fresh `docker compose up` creates all tables and the graph.
+
+---
+
+## Phase 1b: Core Python Library
+
+- [ ] **P1b-1** Create `uam/models.py` with Pydantic models: `HookEvent`, `Memory`, `SearchResult`, `DreamRun`, `SessionSummary`.
+  - Verify: `uv run python -c "from uam.models import HookEvent"` succeeds.
+
+- [ ] **P1b-2** Create `uam/config.py` with settings (DB host/port/user/pass/db, Ollama URL, embedding model name) loaded from env vars with sensible defaults.
+  - Verify: `uv run python -c "from uam.config import settings; print(settings.db_host)"` prints `localhost`.
+
+- [ ] **P1b-3** Create `uam/db.py` with psycopg3 connection pool, a `get_connection()` context manager, and an `ensure_age()` helper that runs `LOAD 'age'; SET search_path = ag_catalog, "$user", public;`.
+  - Verify: `uv run python -c "from uam.db import get_connection"` succeeds (import only; DB not required).
+
+- [ ] **P1b-4** Create `uam/graph.py` with functions: `create_session()`, `create_event()`, `link_event()`, `get_session_events()`. All use AGE Cypher via raw SQL.
+  - Verify: Unit test creates a session and two linked events, then retrieves them in order.
+
+- [ ] **P1b-5** Create `uam/embeddings.py` with an abstract `EmbeddingProvider` base class and an `OllamaEmbeddingProvider` implementation that calls `POST /api/embed` on the Ollama endpoint.
+  - Verify: With Ollama running, `uv run python -c "from uam.embeddings import OllamaEmbeddingProvider; p = OllamaEmbeddingProvider(); print(len(p.embed('hello')))"` prints `768`.
+
+- [ ] **P1b-6** Create `uam/vectors.py` with functions: `store_embedding()`, `search_similar(query_embedding, limit)` using pgvector `<=>` operator.
+  - Verify: Unit test stores an embedding and retrieves it via similarity search.
+
+- [ ] **P1b-7** Create `uam/memories.py` with CRUD: `upsert_memory(path, frontmatter, content)`, `get_memory(path)`, `delete_memory(path)`, `list_memories(prefix)`. Upsert re-embeds on content change.
+  - Verify: Unit test creates, reads, updates, and deletes a memory.
+
+- [ ] **P1b-8** Create `uam/events.py` with `log_event(hook_event: HookEvent)` that writes to the AGE graph and the embeddings table.
+  - Verify: Unit test logs an event and confirms it appears in both graph and vector store.
+
+- [ ] **P1b-9** Create `uam/cli.py` with Click/Typer CLI exposing subcommands: `search`, `store`, `get`, `delete`, `list`, `sessions`, `dream`.
+  - Verify: `uv run python -m uam.cli --help` shows all subcommands.
+
+---
+
+## Phase 2: Hook System
+
+- [ ] **P2-1** Create `uam/hooks/handler.py` that reads JSON from stdin, accepts `--client` flag (claude-code, codex, copilot), normalizes payload into `HookEvent`, and calls `log_event()`.
+  - Verify: `echo '{...}' | uv run python -m uam.hooks.handler --client claude-code` logs the event without error.
+
+- [ ] **P2-2** Create `uam/hooks/injector.py` with functions for `SessionStart` (load profile memories) and `UserPromptSubmit` (vector search for relevant memories). Returns JSON on stdout.
+  - Verify: Unit test with seeded memories returns expected JSON output.
+
+- [ ] **P2-3** Create Claude Code hook config template at `hooks/claude-code/settings.json` with `SessionStart`, `UserPromptSubmit`, `PreToolUse`, `PostToolUse`, `Stop`, `SessionEnd` entries.
+  - Verify: JSON is valid and references correct handler paths.
+
+- [ ] **P2-4** Create Codex hook config template at `hooks/codex/hooks.json` with equivalent events.
+  - Verify: JSON is valid.
+
+- [ ] **P2-5** Create GitHub Copilot hook config template at `hooks/copilot/hooks.json` with `sessionStart`, `userPromptSubmitted`, `preToolUse`, `postToolUse`, `agentStop`, `sessionEnd`.
+  - Verify: JSON is valid.
+
+- [ ] **P2-6** Create Warp skill at `hooks/warp/uam-memory/SKILL.md` instructing the agent to use `uam.cli` commands for memory operations.
+  - Verify: File has valid YAML frontmatter with `name` and `description`.
+
+---
+
+## Phase 3: Dream Phase
+
+- [ ] **P3-1** Create abstract `LLMProvider` base class in `uam/llm.py` with `generate(prompt, system) -> str`. Implement `OllamaLLMProvider`.
+  - Verify: With Ollama running, a simple prompt returns a non-empty string.
+
+- [ ] **P3-2** Create `uam/dream.py` with `run_dream()`: fetch events since last watermark, build prompt with current memories, call LLM, parse output into memory upserts.
+  - Verify: Unit test with mocked LLM produces expected memory upserts.
+
+- [ ] **P3-3** Create dream phase prompt template that instructs the model to output memories as markdown with YAML frontmatter at semantic paths, merging with existing memories.
+  - Verify: Prompt template exists and includes merge/overwrite instructions.
+
+- [ ] **P3-4** Wire `dream` CLI subcommand: check if DB stack is running (docker compose ps), start it if not (docker compose up -d), run dream phase, report results.
+  - Verify: `uv run python -m uam.cli dream` runs end-to-end (with Ollama and DB available).
+
+- [ ] **P3-5** After dream phase completes, invalidate search cache (truncate `uam.search_cache`).
+  - Verify: Cache table is empty after a dream run.
+
+---
+
+## Phase 4: Search
+
+- [ ] **P4-1** Create `uam/search.py` with `hybrid_search(query, scope, limit)` combining vector search and full-text search results.
+  - Verify: Unit test with seeded data returns results from both vector and FTS.
+
+- [ ] **P4-2** Implement Reciprocal Rank Fusion (RRF) reranking in `uam/search.py` to merge vector and FTS result lists.
+  - Verify: Unit test confirms merged ranking differs from either individual ranking.
+
+- [ ] **P4-3** Implement search caching: before searching, check `uam.search_cache` by query hash; after searching, store results with TTL.
+  - Verify: Second identical search returns cached results (measurably faster or cache-hit flag).
+
+- [ ] **P4-4** Wire `search` CLI subcommand with options: `--scope` (events|memories|all), `--limit`, query string.
+  - Verify: `uv run python -m uam.cli search "test query"` returns formatted results.
+
+---
+
+## Phase 5: MCP Server
+
+- [ ] **P5-1** Create `uam/mcp_server.py` using the MCP Python SDK with tool definitions: `uam_search`, `uam_store`, `uam_get`, `uam_delete`, `uam_list`, `uam_sessions`.
+  - Verify: `uv run python -m uam.mcp_server` starts without error and responds to MCP handshake.
+
+- [ ] **P5-2** Wire each MCP tool to the corresponding core library function.
+  - Verify: MCP client test calls `uam_store` then `uam_get` and receives the stored memory.
+
+- [ ] **P5-3** Add MCP server entry point to `pyproject.toml` so it can be referenced by harness configs.
+  - Verify: Entry point is listed in `pyproject.toml`.
+
+---
+
+## Phase 6: API & Web Interface
+
+- [ ] **P6-1** Create `uam/api.py` with FastAPI app exposing REST endpoints: `GET/POST /memories`, `GET/DELETE /memories/{path}`, `GET /search`, `GET /sessions`, `GET /sessions/{id}/events`, `GET /stats`.
+  - Verify: `uv run uvicorn uam.api:app` starts; `GET /stats` returns JSON.
+
+- [ ] **P6-2** Initialize React frontend with Vite in `frontend/`: `npm create vite@latest frontend -- --template react-ts`.
+  - Verify: `npm run dev` in `frontend/` serves the app on localhost.
+
+- [ ] **P6-3** Build search page component with query input, scope selector, and results display.
+  - Verify: Searching via the UI returns and displays results from the API.
+
+- [ ] **P6-4** Build memory browser component with tree view of semantic paths and content viewer.
+  - Verify: Navigating the tree shows memory content with frontmatter.
+
+- [ ] **P6-5** Build session browser component with session list and event timeline.
+  - Verify: Clicking a session shows its events in chronological order.
+
+- [ ] **P6-6** Build stats dashboard component showing event counts, memory counts, and dream phase history.
+  - Verify: Dashboard renders with data from the `/stats` endpoint.
+
+---
+
+## Phase 7: Testing & Documentation
+
+- [ ] **P7-1** Set up `pytest` with a `conftest.py` that provides a test Postgres connection (via testcontainers or docker-compose test profile).
+  - Verify: `uv run pytest --co` collects tests without error.
+
+- [ ] **P7-2** Write unit tests for `uam/graph.py` (session/event CRUD).
+  - Verify: `uv run pytest tests/test_graph.py` passes.
+
+- [ ] **P7-3** Write unit tests for `uam/memories.py` (CRUD + embedding update).
+  - Verify: `uv run pytest tests/test_memories.py` passes.
+
+- [ ] **P7-4** Write unit tests for `uam/search.py` (hybrid search + RRF + caching).
+  - Verify: `uv run pytest tests/test_search.py` passes.
+
+- [ ] **P7-5** Write unit tests for `uam/hooks/handler.py` (payload normalization for each client).
+  - Verify: `uv run pytest tests/test_hooks.py` passes.
+
+- [ ] **P7-6** Write unit tests for `uam/dream.py` (with mocked LLM).
+  - Verify: `uv run pytest tests/test_dream.py` passes.
+
+- [ ] **P7-7** Update `README.md` with project overview, setup instructions, usage examples.
+  - Verify: README contains sections for Setup, Usage, Hook Installation, and Dream Phase.
+
+- [ ] **P7-8** Update `IMPLEMENTATION.md` with architecture diagram, schema details, and design decisions.
+  - Verify: IMPLEMENTATION.md contains architecture overview and schema documentation.
