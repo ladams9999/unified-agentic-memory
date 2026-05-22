@@ -1,4 +1,4 @@
-name: postgres-stack
+name: unified-agentic-memory-db
 services:
   db:
     image: pguam:18.4
@@ -10,8 +10,9 @@ services:
       POSTGRES_USER: ${PG_USER}
       POSTGRES_PASSWORD: ${PG_PASSWORD}
       POSTGRES_DB: ${PG_DB}
+      PGDATA: /var/lib/postgresql/data
     volumes:
       - ./db_data:/var/lib/postgresql/data
       - ./create_extension.sql:/docker-entrypoint-initdb.d/0-create_extension.sql
-      - ./create_pgcron.sh:/docker-entrypoint-initdb.d/1-create_pgcron.sh
+      - ./create_pgcron.sql:/docker-entrypoint-initdb.d/1-create_pgcron.sql
       - ./schema.sql:/docker-entrypoint-initdb.d/2-schema.sql

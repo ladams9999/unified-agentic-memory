@@ -1,4 +1,5 @@
-CREATE SCHEMA IF NOT EXISTS uam;
+LOAD 'age';
+SET search_path = ag_catalog, "$user", public;
 
 DO $$
 BEGIN
@@ -28,18 +29,7 @@ CREATE TABLE IF NOT EXISTS uam.events (
     payload_schema_version TEXT NOT NULL DEFAULT '1',
     occurred_at TIMESTAMPTZ NOT NULL,
     ingested_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    content_tsv tsvector GENERATED ALWAYS AS (
-        to_tsvector(
-            'simple',
-            concat_ws(
-                ' ',
-                coalesce(event_name, ''),
-                coalesce(tool_name, ''),
-                coalesce(user_prompt, ''),
-                coalesce(raw_payload::text, '')
-            )
-        )
-    ) STORED
+    content_tsv tsvector
 );
 
 CREATE TABLE IF NOT EXISTS uam.memories (
@@ -50,10 +40,43 @@ CREATE TABLE IF NOT EXISTS uam.memories (
     embedding vector(768),
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    content_tsv tsvector GENERATED ALWAYS AS (
-        to_tsvector('simple', concat_ws(' ', coalesce(path, ''), coalesce(content, '')))
-    ) STORED
+    content_tsv tsvector
 );
+
+CREATE OR REPLACE FUNCTION uam.set_event_content_tsv() RETURNS trigger AS $$
+BEGIN
+    NEW.content_tsv := to_tsvector(
+        'simple',
+        coalesce(NEW.event_name, '') || ' ' ||
+        coalesce(NEW.tool_name, '') || ' ' ||
+        coalesce(NEW.user_prompt, '') || ' ' ||
+        coalesce(NEW.raw_payload::text, '')
+    );
+    RETURN NEW;
+END
+$$ LANGUAGE plpgsql;
+
+CREATE OR REPLACE FUNCTION uam.set_memory_content_tsv() RETURNS trigger AS $$
+BEGIN
+    NEW.content_tsv := to_tsvector(
+        'simple',
+        coalesce(NEW.path, '') || ' ' || coalesce(NEW.content, '')
+    );
+    RETURN NEW;
+END
+$$ LANGUAGE plpgsql;
+
+DROP TRIGGER IF EXISTS uam_events_content_tsv_trigger ON uam.events;
+CREATE TRIGGER uam_events_content_tsv_trigger
+BEFORE INSERT OR UPDATE ON uam.events
+FOR EACH ROW
+EXECUTE FUNCTION uam.set_event_content_tsv();
+
+DROP TRIGGER IF EXISTS uam_memories_content_tsv_trigger ON uam.memories;
+CREATE TRIGGER uam_memories_content_tsv_trigger
+BEFORE INSERT OR UPDATE ON uam.memories
+FOR EACH ROW
+EXECUTE FUNCTION uam.set_memory_content_tsv();
 
 CREATE TABLE IF NOT EXISTS uam.embeddings (
     id UUID PRIMARY KEY,
