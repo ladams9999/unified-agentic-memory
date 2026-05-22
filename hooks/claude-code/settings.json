@@ -1,10 +1,64 @@
 {
   "hooks": {
-    "SessionStart": "uv run python -m uam.hooks.handler --client claude-code",
-    "UserPromptSubmit": "uv run python -m uam.hooks.handler --client claude-code",
-    "PreToolUse": "uv run python -m uam.hooks.handler --client claude-code",
-    "PostToolUse": "uv run python -m uam.hooks.handler --client claude-code",
-    "Stop": "uv run python -m uam.hooks.handler --client claude-code",
-    "SessionEnd": "uv run python -m uam.hooks.handler --client claude-code"
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "uv run --directory \"<UAM_PROJECT_DIR>\" python -m uam.hooks.handler --client claude-code"
+          }
+        ]
+      }
+    ],
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "uv run --directory \"<UAM_PROJECT_DIR>\" python -m uam.hooks.handler --client claude-code"
+          }
+        ]
+      }
+    ],
+    "PreToolUse": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "uv run --directory \"<UAM_PROJECT_DIR>\" python -m uam.hooks.handler --client claude-code"
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "uv run --directory \"<UAM_PROJECT_DIR>\" python -m uam.hooks.handler --client claude-code"
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "uv run --directory \"<UAM_PROJECT_DIR>\" python -m uam.hooks.handler --client claude-code"
+          }
+        ]
+      }
+    ],
+    "SessionEnd": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "uv run --directory \"<UAM_PROJECT_DIR>\" python -m uam.hooks.handler --client claude-code"
+          }
+        ]
+      }
+    ]
   }
 }

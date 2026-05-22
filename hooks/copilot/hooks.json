@@ -1,10 +1,59 @@
 {
+  "version": 1,
   "hooks": {
-    "sessionStart": "uv run python -m uam.hooks.handler --client copilot",
-    "userPromptSubmitted": "uv run python -m uam.hooks.handler --client copilot",
-    "preToolUse": "uv run python -m uam.hooks.handler --client copilot",
-    "postToolUse": "uv run python -m uam.hooks.handler --client copilot",
-    "agentStop": "uv run python -m uam.hooks.handler --client copilot",
-    "sessionEnd": "uv run python -m uam.hooks.handler --client copilot"
+    "sessionStart": [
+      {
+        "type": "command",
+        "bash": "uv run python -m uam.hooks.handler --client copilot",
+        "powershell": "uv run python -m uam.hooks.handler --client copilot",
+        "cwd": "<UAM_PROJECT_DIR>",
+        "timeoutSec": 30
+      }
+    ],
+    "userPromptSubmitted": [
+      {
+        "type": "command",
+        "bash": "uv run python -m uam.hooks.handler --client copilot",
+        "powershell": "uv run python -m uam.hooks.handler --client copilot",
+        "cwd": "<UAM_PROJECT_DIR>",
+        "timeoutSec": 30
+      }
+    ],
+    "preToolUse": [
+      {
+        "type": "command",
+        "bash": "uv run python -m uam.hooks.handler --client copilot",
+        "powershell": "uv run python -m uam.hooks.handler --client copilot",
+        "cwd": "<UAM_PROJECT_DIR>",
+        "timeoutSec": 30
+      }
+    ],
+    "postToolUse": [
+      {
+        "type": "command",
+        "bash": "uv run python -m uam.hooks.handler --client copilot",
+        "powershell": "uv run python -m uam.hooks.handler --client copilot",
+        "cwd": "<UAM_PROJECT_DIR>",
+        "timeoutSec": 30
+      }
+    ],
+    "agentStop": [
+      {
+        "type": "command",
+        "bash": "uv run python -m uam.hooks.handler --client copilot",
+        "powershell": "uv run python -m uam.hooks.handler --client copilot",
+        "cwd": "<UAM_PROJECT_DIR>",
+        "timeoutSec": 30
+      }
+    ],
+    "sessionEnd": [
+      {
+        "type": "command",
+        "bash": "uv run python -m uam.hooks.handler --client copilot",
+        "powershell": "uv run python -m uam.hooks.handler --client copilot",
+        "cwd": "<UAM_PROJECT_DIR>",
+        "timeoutSec": 30
+      }
+    ]
   }
 }
