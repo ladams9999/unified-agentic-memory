@@ -37,6 +37,12 @@ def get_pool() -> ConnectionPool:
     return _POOL
 
 
+def close_pool() -> None:
+    global _POOL
+    if _POOL is not None and not _POOL.closed:
+        _POOL.close()
+
+
 @contextmanager
 def get_connection(existing: Any | None = None) -> Iterator[Any]:
     if existing is not None:

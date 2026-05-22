@@ -2,17 +2,23 @@ from __future__ import annotations
 
 from typing import Any
 
+from psycopg.types.json import Jsonb
+
 from .db import get_connection
 from .embeddings import EmbeddingProvider, OllamaEmbeddingProvider
 from .models import Memory
 from .uuids import uuid7
 
 
+def _unwrap_json(value: Any) -> Any:
+    return value.obj if hasattr(value, "obj") else value
+
+
 def _memory_from_row(row: Any) -> Memory:
     return Memory(
         id=row[0],
         path=row[1],
-        frontmatter=row[2] or {},
+        frontmatter=_unwrap_json(row[2]) or {},
         content=row[3],
         embedding=row[4],
         created_at=row[5],
@@ -51,7 +57,7 @@ def upsert_memory(
                 embedding = EXCLUDED.embedding,
                 updated_at = NOW()
             """,
-            (memory_id, path, frontmatter, content, embedding),
+            (memory_id, path, Jsonb(frontmatter), content, embedding),
         )
         if conn is None:
             active.commit()

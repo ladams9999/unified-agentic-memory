@@ -27,7 +27,7 @@ class OllamaLLMProvider(LLMProvider):
                 "system": system,
                 "stream": False,
             },
-            timeout=60,
+            timeout=settings.llm_timeout_seconds,
         )
         response.raise_for_status()
         payload = response.json()

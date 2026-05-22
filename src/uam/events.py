@@ -2,6 +2,8 @@ from __future__ import annotations
 
 from typing import Any
 
+from psycopg.types.json import Jsonb
+
 from .db import get_connection
 from .embeddings import EmbeddingProvider, OllamaEmbeddingProvider
 from .models import HookEvent
@@ -44,10 +46,10 @@ def log_event(
                 event.model_name,
                 event.event_name,
                 event.tool_name,
-                event.tool_input,
+                Jsonb(event.tool_input) if event.tool_input is not None else None,
                 event.user_prompt,
                 event.cwd,
-                event.raw_payload,
+                Jsonb(event.raw_payload),
                 event.payload_schema_version,
                 event.occurred_at,
             ),

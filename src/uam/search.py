@@ -4,11 +4,17 @@ import hashlib
 from datetime import datetime, timezone
 from typing import Any, Iterable
 
+from psycopg.types.json import Jsonb
+
 from .config import settings
 from .db import get_connection
 from .embeddings import EmbeddingProvider, OllamaEmbeddingProvider
 from .models import SearchResult
 from .vectors import search_similar
+
+
+def _unwrap_json(value: Any) -> Any:
+    return value.obj if hasattr(value, "obj") else value
 
 
 def _hash_query(query: str, scope: str, limit: int) -> str:
@@ -42,7 +48,8 @@ def _full_text_search(conn: Any, query: str, scope: str, limit: int) -> list[Sea
     if scope in {"all", "events"}:
         rows = conn.execute(
             """
-            SELECT id::text, event_name, COALESCE(user_prompt, raw_payload::text), ts_rank(content_tsv, websearch_to_tsquery('simple', %s)) AS score
+            SELECT id::text, event_name, COALESCE(user_prompt, raw_payload::text),
+                   ts_rank(content_tsv, websearch_to_tsquery('simple', %s)) AS score
             FROM uam.events
             WHERE content_tsv @@ websearch_to_tsquery('simple', %s)
             ORDER BY score DESC, occurred_at DESC
@@ -64,7 +71,8 @@ def _full_text_search(conn: Any, query: str, scope: str, limit: int) -> list[Sea
     if scope in {"all", "memories"}:
         rows = conn.execute(
             """
-            SELECT id::text, path, content, ts_rank(content_tsv, websearch_to_tsquery('simple', %s)) AS score
+            SELECT id::text, path, content,
+                   ts_rank(content_tsv, websearch_to_tsquery('simple', %s)) AS score
             FROM uam.memories
             WHERE content_tsv @@ websearch_to_tsquery('simple', %s)
             ORDER BY score DESC, updated_at DESC
@@ -98,7 +106,7 @@ def _get_cached_results(conn: Any, query_hash: str, now: datetime) -> list[Searc
     ).fetchone()
     if row is None:
         return None
-    return [SearchResult.model_validate(item) for item in row[0]]
+    return [SearchResult.model_validate(item) for item in _unwrap_json(row[0])]
 
 
 def _cache_results(
@@ -124,7 +132,7 @@ def _cache_results(
             created_at = EXCLUDED.created_at,
             ttl_seconds = EXCLUDED.ttl_seconds
         """,
-        (query_hash, [result.model_dump(mode="json") for result in results], now, ttl_seconds),
+        (query_hash, Jsonb([result.model_dump(mode="json") for result in results]), now, ttl_seconds),
     )
 
 

@@ -1,6 +1,10 @@
 from __future__ import annotations
 
+import uuid
 from typing import Any
+
+from pgvector import Vector
+from psycopg.types.json import Jsonb
 
 from .models import SearchResult
 from .uuids import uuid7
@@ -20,7 +24,7 @@ def store_embedding(
         INSERT INTO uam.embeddings (id, event_id, embedding, content, metadata)
         VALUES (%s, %s, %s, %s, %s)
         """,
-        (embedding_id, event_id, embedding, content, metadata or {}),
+        (embedding_id, event_id, embedding, content, Jsonb(metadata or {})),
     )
     return embedding_id
 
@@ -32,6 +36,7 @@ def search_similar(
     scope: str = "all",
 ) -> list[SearchResult]:
     results: list[SearchResult] = []
+    query_vector = Vector(query_embedding)
     if scope in {"all", "events"}:
         rows = conn.execute(
             """
@@ -41,7 +46,7 @@ def search_similar(
             ORDER BY e.embedding <=> %s
             LIMIT %s
             """,
-            (query_embedding, query_embedding, limit),
+            (query_vector, query_vector, limit),
         ).fetchall()
         results.extend(
             SearchResult(
@@ -64,7 +69,7 @@ def search_similar(
             ORDER BY embedding <=> %s
             LIMIT %s
             """,
-            (query_embedding, query_embedding, limit),
+            (query_vector, query_vector, limit),
         ).fetchall()
         results.extend(
             SearchResult(

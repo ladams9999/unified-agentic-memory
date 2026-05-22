@@ -6,7 +6,7 @@ from pathlib import Path
 
 import typer
 
-from .db import apply_migrations, get_connection, project_root
+from .db import apply_migrations, close_pool, get_connection, project_root
 from .dream import run_dream
 from .events import list_session_summaries
 from .memories import delete_memory, get_memory, list_memories, upsert_memory
@@ -87,7 +87,10 @@ def dream(dry_run: bool = False) -> None:
 
 
 def main() -> None:
-    app()
+    try:
+        app()
+    finally:
+        close_pool()
 
 
 if __name__ == "__main__":

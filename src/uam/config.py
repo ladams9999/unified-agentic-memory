@@ -22,6 +22,7 @@ class Settings(BaseSettings):
     ollama_url: str = "http://localhost:11434"
     embedding_model: str = "nomic-embed-text"
     llm_model: str = "smollm3"
+    llm_timeout_seconds: int = 300
     search_cache_ttl_seconds: int = 900
     hook_metrics_window: int = 200
     local_log_dir: Path = Path("logs")
