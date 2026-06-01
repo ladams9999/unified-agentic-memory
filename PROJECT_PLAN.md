@@ -2,7 +2,25 @@
 
 Build a single, shared memory layer for work across multiple coding agents: Claude Code, Github Copilot, Codex, and Warp.
 
-## Setup
+Goal will be to get the memory working for Github Copilot first.
+
+## Memory Structure
+
+### Basic Memory
+
+Data will come from the coding agent, the data stored as markdown in the database.  Data from hooks will be stored as task diaries in the knowledge graph, and will be periodically reviewed by an agent to extract observations and conclusions which will also be placed in the knowledge graph.  Additionally an agent will review the recent entries (7ish days) in the knowledge graph and append key learnings.
+
+For each markdown entity:
+
+- Content and metadata will stored in relational db
+- Content will be embedded into a vector db
+- Content will be added to a graph database to maintain relationships and hierarchy
+- Content will be indexed for full text search
+- Synthesized data will be versioned as learnings and conclusions change.  Facts will be static.  
+
+Recent learnings will be collected and cached and provided back to agent.
+
+## Setup for development
 
 - Postgres with pgvector for vector storage
 - Postgres relational tables as source-of-truth event storage
@@ -73,9 +91,13 @@ Re-running the indexer updates memories that already have an ID in the collectio
 
 Each relational event and memory will be indexed for full text search.
 
+## Action Review
+
+A periodic job that reviews recent sessions and events then summarizes what happened, adding to memory state and updating responses to agents.  Will probably run after session end depending on performance.
+
 ## Dream Phase
 
-A periodic batch job that extracts facts from sessions, summarizes what happened, and updates memory state. pg_cron is available; specific cadence is deferred for v1 and can be run manually, from session end hooks, or scheduled later.
+A periodic batch job that extracts from sessions, summarizes what happened, and updates memory state. pg_cron is available; specific cadence is deferred for v1 and can be run manually, from session end hooks, or scheduled later.
 
 The batch job pulls every event since last run, and hands them to the model with the current memory store, and is asked to write back a small set of durable notes, imitating a markdown wiki.  Each memory is a file at a semantic path, with YAML frontmatter on top and regular text below.  The model will merge rather than append, and if something new contradicts an old note, the old note gets rewritten.
 
@@ -87,7 +109,7 @@ Besides receiving data from the hooks, a model can search for relevant memories,
 
 - Hooks passively log every event to relational source-of-truth storage, without model calls.
 - Graph views are projected from relational events for traversal and relationship queries.
-- Dream Phase reads accumulated events, distilling them into durable markdown memories.  Memories are organized by topic, and merged rather than appended.
+- Dream Phase and Action Review read accumulated events, distilling them into durable markdown memories.  Memories are organized by topic, and merged rather than appended.
 - Injection on session start from any harness, profile memories are loaded into context. On user prompt, relevant memories are searched and appended automatically
 
 ## Search
