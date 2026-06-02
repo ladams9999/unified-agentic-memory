@@ -32,30 +32,24 @@ Dream phase -> uam.dream.run_dream -> LLM -> parsed memory blocks -> uam.memorie
 
 ## Database schema
 
-`db_stack/schema.sql` and `db_stack/migrations/0001_initial_schema.sql` define:
+`db_stack/migrations/` defines all schema changes:
 
-- `uam.events`
-  - append-only source of truth
-  - raw payload stored losslessly in `raw_payload JSONB`
-  - normalized columns for session, client, model, tool, prompt, cwd, and timestamps
-  - generated `tsvector` column for full-text search
-- `uam.memories`
-  - semantic path, frontmatter, content, optional embedding, timestamps
-  - generated `tsvector` column for full-text search
-- `uam.embeddings`
-  - event embeddings plus metadata
-  - HNSW vector index
-- `uam.dream_runs`
-  - dream bookkeeping and watermarking
-- `uam.search_cache`
-  - cached hybrid search results with TTL
-- `uam.schema_migrations`
-  - applied migration tracking
+- `0001_initial_schema.sql`
+  - `uam.events`: append-only source of truth; raw payload in `raw_payload JSONB`; normalized columns for session, client, model, tool, prompt, cwd, and timestamps; generated `tsvector` for full-text search
+  - `uam.memories`: semantic path, frontmatter, content, optional embedding, timestamps; generated `tsvector` for full-text search
+  - `uam.embeddings`: event embeddings plus metadata; HNSW vector index
+  - `uam.dream_runs`: dream bookkeeping and watermarking
+  - `uam.search_cache`: cached hybrid search results with TTL
+  - `uam.schema_migrations`: applied migration tracking
+- `0002_memory_type.sql`
+  - Adds `memory_type TEXT NOT NULL DEFAULT 'learning' CHECK (memory_type IN ('fact', 'learning', 'idea'))` to `uam.memories`
 
-Apache AGE graph `uam` is created alongside the schema and uses labels:
+Apache AGE graph `uam` uses labels:
 
-- vertices: `Session`, `Event`, `Memory`
-- edges: `HAS_EVENT`, `NEXT_EVENT`, `REMEMBERS`
+- vertices: `Session`, `Event`, `Directory`, `Memory`
+- edges: `HAS_EVENT`, `NEXT_EVENT`, `CHILD`
+
+`Directory` and `Memory` nodes in the graph store only `{id, path}` — references to relational rows, not copies of content. Path hierarchy is represented structurally: a memory at `profiles/user/prefs` produces `profiles`, `profiles/user`, and `profiles/user/prefs` nodes linked by `:CHILD` edges, mimicking a markdown directory tree. On delete, orphaned `Directory` nodes are pruned bottom-up.
 
 ## Docker stack
 
@@ -96,10 +90,16 @@ The dream phase is intentionally simple and file-oriented:
 1. Fetch events since the last dream watermark.
 2. Load current memories.
 3. Build a prompt that includes both.
-4. Ask the LLM to emit fenced `memory` blocks.
-5. Parse each block into `(path, frontmatter, content)`.
-6. Upsert memories and clear search cache.
+4. Ask the LLM to emit fenced `memory` blocks, each with a `type:` frontmatter field (`fact`, `learning`, or `idea`).
+5. Parse each block into `(path, frontmatter, content, memory_type)`.
+6. Upsert memories (silently skips any block that tries to overwrite a `fact`) and clear search cache.
 7. Record the run in `uam.dream_runs`.
+
+### Memory types
+
+- `fact` — a specific, sourced, static observation. Created once; no update path is exposed anywhere (MCP, API, CLI, or dream phase).
+- `learning` — a synthesized conclusion from multiple facts. Updatable by the dream phase or via `uam_store`.
+- `idea` — a probable but unconfirmed inference. Updatable; promoted to `learning` via `confirm_idea()` / `uam_confirm_idea` MCP tool / `uam confirm-idea` CLI command.
 
 Scheduling policy is deferred in v1. `pg_cron` is installed so scheduling can be added without changing the core runtime model.
 
