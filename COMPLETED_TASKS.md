@@ -49,6 +49,18 @@ The items below were completed and verified in this implementation pass.
 
 - [x] **P6-2** Initialize the React frontend with Vite in `frontend/`.
 
+## Goal 5: API, MCP, and Frontend Validation
+
+- [x] **P6-1** Validated all 9 FastAPI endpoints return correct JSON against live DB.
+- [x] **P5-1** Validated MCP handshake: `initialize` request returns valid `protocolVersion` and capabilities.
+- [x] **P5-2** Validated `uam_search`, `uam_store`, and `uam_dream` MCP tool functions against live DB and Ollama.
+- [x] **P6-3** Validated search UI: form renders, API wired correctly.
+- [x] **P6-4** Validated memory browser: 5 paths listed, content preview works.
+- [x] **P6-5** Validated session browser: 8 sessions listed, event timeline loads on click.
+- [x] **P6-6** Validated stats dashboard: 14 events / 5 memories / 3 dream runs rendered correctly.
+- [x] **fix** Added CORS middleware to `api.py` — frontend was blocked by missing `Access-Control-Allow-Origin`.
+- [x] **fix** Excluded `embedding` field from memory API responses — was leaking full 768-dim vectors.
+
 ## Goal 4: Dream Phase & Search Validation
 
 - [x] **P3-1** Validated live Ollama prose generation through `OllamaLLMProvider` using `mistral` model; phi4-mini discarded due to repetitive-token failure on structured-output prompts.

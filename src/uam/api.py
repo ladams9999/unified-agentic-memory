@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from fastapi import FastAPI, HTTPException, Query
+from fastapi.middleware.cors import CORSMiddleware
 
 from .db import get_connection
 from .dream import run_dream
@@ -9,11 +10,20 @@ from .memories import delete_memory, get_memory, list_memories, upsert_memory
 from .search import hybrid_search
 
 app = FastAPI(title="Unified Agentic Memory")
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+
+_MEMORY_EXCLUDE = {"embedding"}
 
 
 @app.get("/memories")
 def api_list_memories(prefix: str | None = None) -> list[dict]:
-    return [memory.model_dump(mode="json") for memory in list_memories(prefix)]
+    return [memory.model_dump(mode="json", exclude=_MEMORY_EXCLUDE) for memory in list_memories(prefix)]
 
 
 @app.post("/memories")
@@ -22,7 +32,7 @@ def api_store_memory(payload: dict) -> dict:
         payload["path"],
         payload.get("frontmatter", {}),
         payload.get("content", ""),
-    ).model_dump(mode="json")
+    ).model_dump(mode="json", exclude=_MEMORY_EXCLUDE)
 
 
 @app.get("/memories/{path:path}")
@@ -30,7 +40,7 @@ def api_get_memory(path: str) -> dict:
     memory = get_memory(path)
     if memory is None:
         raise HTTPException(status_code=404, detail="Memory not found")
-    return memory.model_dump(mode="json")
+    return memory.model_dump(mode="json", exclude=_MEMORY_EXCLUDE)
 
 
 @app.delete("/memories/{path:path}")
