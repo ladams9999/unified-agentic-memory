@@ -6,10 +6,6 @@ The items below are still open because they need live Docker/Ollama-backed verif
 
 ## Runtime validation blocked by unavailable local services
 
-- [ ] **P3-1** Validate live Ollama prose generation through `OllamaLLMProvider`.
-- [ ] **P3-4** Validate `uv run python -m uam.cli dream` end to end with Docker and Ollama available.
-- [ ] **P3-6** Run the pg_cron smoke test against live pg_cron metadata tables.
-- [ ] **P4-4** Validate the `search` CLI command against a seeded live database.
 - [ ] **P5-1** Validate MCP handshake with a real MCP client.
 - [ ] **P5-2** Validate MCP tool calls against a running backend.
 - [ ] **P6-1** Validate `GET /stats` returns JSON from a running FastAPI app with a live database.

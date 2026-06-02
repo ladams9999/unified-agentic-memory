@@ -49,6 +49,15 @@ The items below were completed and verified in this implementation pass.
 
 - [x] **P6-2** Initialize the React frontend with Vite in `frontend/`.
 
+## Goal 4: Dream Phase & Search Validation
+
+- [x] **P3-1** Validated live Ollama prose generation through `OllamaLLMProvider` using `mistral` model; phi4-mini discarded due to repetitive-token failure on structured-output prompts.
+- [x] **P3-4** Validated `uv run uam dream` end-to-end: 13 events processed, 1 memory written, watermark set; incremental re-run processed only 1 new event.
+- [x] **P3-6** Validated dream watermark: `uam.dream_runs` row present after run; second run processed only events after watermark.
+- [x] **P4-4** Validated `uv run uam search` returns ranked hybrid results; cache populated on first hit, cleared to 0 rows after next dream run.
+- [x] **fix** Updated default `llm_model` in `config.py` from `phi4-mini` to `mistral`.
+- [x] **fix** Fixed `--dry-run` bug in `dream.py`: dry runs no longer write to `uam.dream_runs` or advance the watermark.
+
 ## Goal 3: End-to-End Event Ingest & Hook Validation
 
 - [x] **P1b-8** Validated all 6 event types (SessionStart, UserPromptSubmit, PreToolUse, PostToolUse, Stop, SessionEnd) through handler against live DB; rows confirmed in `uam.events`, `uam.embeddings`, and AGE graph.

@@ -108,25 +108,24 @@ def run_dream(
         blocks = parse_memory_blocks(response)
 
         updated = 0
+        new_watermark = events[-1]["occurred_at"] if events else watermark
+        completed_at = datetime.now(timezone.utc)
         if not dry_run:
             for path, frontmatter, content in blocks:
                 upsert_memory(path, frontmatter, content, conn=active, embedder=embedder)
                 updated += 1
             active.execute("TRUNCATE uam.search_cache")
-
-        new_watermark = events[-1]["occurred_at"] if events else watermark
-        completed_at = datetime.now(timezone.utc)
-        active.execute(
-            """
-            INSERT INTO uam.dream_runs (
-                id, started_at, completed_at, events_processed, memories_updated, watermark
+            active.execute(
+                """
+                INSERT INTO uam.dream_runs (
+                    id, started_at, completed_at, events_processed, memories_updated, watermark
+                )
+                VALUES (%s, %s, %s, %s, %s, %s)
+                """,
+                (dream_id, started_at, completed_at, len(events), updated, new_watermark),
             )
-            VALUES (%s, %s, %s, %s, %s, %s)
-            """,
-            (dream_id, started_at, completed_at, len(events), updated, new_watermark),
-        )
-        if conn is None:
-            active.commit()
+            if conn is None:
+                active.commit()
     return DreamRun(
         id=dream_id,
         started_at=started_at,
