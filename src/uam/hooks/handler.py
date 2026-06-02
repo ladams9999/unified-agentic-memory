@@ -9,6 +9,7 @@ from pathlib import Path
 from typing import Any
 
 from ..config import settings
+from ..db import close_pool
 from ..events import log_event
 from ..models import HookEvent
 from .injector import session_start_payload, user_prompt_payload
@@ -141,6 +142,7 @@ def run(argv: list[str] | None = None) -> int:
     finally:
         duration_ms = (time.perf_counter() - start) * 1000
         record_metric(args.client, event_name, duration_ms, success)
+        close_pool()
     return 0
 
 

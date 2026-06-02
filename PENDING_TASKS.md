@@ -6,10 +6,6 @@ The items below are still open because they need live Docker/Ollama-backed verif
 
 ## Runtime validation blocked by unavailable local services
 
-- [ ] **P1b-6** Validate vector storage and similarity search against pgvector.
-- [ ] **P1b-8** Validate end-to-end event logging into relational, graph, and vector stores.
-- [ ] **P1b-11** Validate projection replay against a live AGE graph.
-- [ ] **P2-2** Validate injector search/profile responses against seeded memories.
 - [ ] **P3-1** Validate live Ollama prose generation through `OllamaLLMProvider`.
 - [ ] **P3-4** Validate `uv run python -m uam.cli dream` end to end with Docker and Ollama available.
 - [ ] **P3-6** Run the pg_cron smoke test against live pg_cron metadata tables.

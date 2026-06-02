@@ -49,6 +49,14 @@ The items below were completed and verified in this implementation pass.
 
 - [x] **P6-2** Initialize the React frontend with Vite in `frontend/`.
 
+## Goal 3: End-to-End Event Ingest & Hook Validation
+
+- [x] **P1b-8** Validated all 6 event types (SessionStart, UserPromptSubmit, PreToolUse, PostToolUse, Stop, SessionEnd) through handler against live DB; rows confirmed in `uam.events`, `uam.embeddings`, and AGE graph.
+- [x] **P1b-6** Validated vector similarity search returns ranked results from both event embeddings and memory embeddings.
+- [x] **P1b-11** Validated projection replay: `replay_relational_events` processed all 11 events; `NEXT_EVENT` chain edges created in AGE graph.
+- [x] **P2-2** Validated injection: `SessionStart` emits `{"system": "..."}` with profile memory content; `UserPromptSubmit` emits `{"userPrompt": "..."}` with hybrid search results.
+- [x] **fix** Added `close_pool()` call to `handler.py` finally block — eliminates 5-second thread timeout on hook exit.
+
 ## Goal 2: Environment Bootstrap & Schema Validation
 
 - [x] **P0-3** Validated pg_cron 1.6 installed in the `postgres` database.
