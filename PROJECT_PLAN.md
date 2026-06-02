@@ -2,13 +2,13 @@
 
 Build a single, shared memory layer for work across multiple coding agents: Claude Code, Github Copilot, Codex, and Warp.
 
-## Setup
+## MVP Setup
 
 - Postgres with pgvector for vector storage
 - Postgres relational tables as source-of-truth event storage
 - Postgres with Apache AGE for graph projection and traversal
 - Ollama using `nomic-embed-text` for embeddings
-- Ollama using `Mistral 7B`, `Phi-4`, or `SmolLM3` (TBD) for prose work
+- Ollama using `phi4-mini`, `phi4-mini-reasoning`, or `mistral` (Mistral 7B) for prose work
 - Python
 - uv to manage project
 - pg_cron installed and available (scheduling policy deferred)
