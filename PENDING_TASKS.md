@@ -6,19 +6,6 @@ The items below are still open because they need live Docker/Ollama-backed verif
 
 ## Runtime validation blocked by unavailable local services
 
-- [ ] **P0-3** Validate pg_cron extension creation inside the `postgres` database after container startup.
-- [ ] **P0-8** Apply the migration runner end to end against a fresh Postgres instance and verify idempotent re-runs.
-- [ ] **P1a-1** Verify the AGE graph `uam` exists after fresh DB initialization.
-- [ ] **P1a-1b** Verify the append-only `uam.events` relational table in a live database.
-- [ ] **P1a-2** Verify the `uam.memories` table in a live database.
-- [ ] **P1a-3** Verify the `uam.embeddings` table and HNSW indexes in a live database.
-- [ ] **P1a-4** Verify the `uam.dream_runs` table in a live database.
-- [ ] **P1a-5** Verify the `uam.search_cache` table in a live database.
-- [ ] **P1a-6** Verify the GIN full-text indexes in a live database.
-- [ ] **P1a-7** Verify docker-compose init creates schema and graph on a fresh container.
-- [ ] **P1a-8** Verify operational event indexes in a live database.
-- [ ] **P1b-3** Validate psycopg pool connectivity plus `ensure_age()` against a running database.
-- [ ] **P1b-5** Validate live Ollama embeddings return 768 dimensions.
 - [ ] **P1b-6** Validate vector storage and similarity search against pgvector.
 - [ ] **P1b-8** Validate end-to-end event logging into relational, graph, and vector stores.
 - [ ] **P1b-11** Validate projection replay against a live AGE graph.

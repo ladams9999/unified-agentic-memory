@@ -49,6 +49,22 @@ The items below were completed and verified in this implementation pass.
 
 - [x] **P6-2** Initialize the React frontend with Vite in `frontend/`.
 
+## Goal 2: Environment Bootstrap & Schema Validation
+
+- [x] **P0-3** Validated pg_cron 1.6 installed in the `postgres` database.
+- [x] **P0-8** Applied migration runner end-to-end; confirmed idempotent re-run returns `{"applied": []}` with no errors.
+- [x] **P1a-1** Verified AGE graph `uam` exists after docker-compose init.
+- [x] **P1a-1b** Verified append-only `uam.events` table with `raw_payload JSONB` and normalized columns.
+- [x] **P1a-2** Verified `uam.memories` table with semantic path, frontmatter, content, embedding, and FTS columns.
+- [x] **P1a-3** Verified `uam.embeddings` table; HNSW index `uam_embeddings_embedding_hnsw_idx` present.
+- [x] **P1a-4** Verified `uam.dream_runs` table.
+- [x] **P1a-5** Verified `uam.search_cache` table.
+- [x] **P1a-6** Verified GIN FTS indexes on `uam.events` and `uam.memories`; FTS triggers confirmed.
+- [x] **P1a-7** Verified docker-compose init scripts create schema, AGE graph, and all tables on fresh container.
+- [x] **P1a-8** Verified operational event indexes (session_id, client, event_name, occurred_at).
+- [x] **P1b-3** Validated psycopg pool connects to `uam_db` on PostgreSQL 18.4; `ensure_age()` sets `ag_catalog` in `search_path`.
+- [x] **P1b-5** Validated `nomic-embed-text` via `OllamaEmbeddingProvider` returns 768-dimension vectors.
+
 ## Goal 1: Documentation Alignment
 
 - [x] **G1-1** Rewrote `AGENTS.md` with substantive project summary: architecture, key files table, schema overview, run instructions, hook deployment, and testing notes.
