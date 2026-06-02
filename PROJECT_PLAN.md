@@ -2,7 +2,35 @@
 
 Build a single, shared memory layer for work across multiple coding agents: Claude Code, Github Copilot, Codex, and Warp.
 
-Goal will be to get the memory working for Github Copilot first.
+## Current Goals
+
+### Goal 1
+
+- Get the memory working for Github Copilot first, on Windows, MacOS, and Linux
+- Then get the memory working for Claude Code, Codex, and Warp on same.
+
+### Goal 2
+
+May be worked on independently of other goals.
+
+- Implement remote model usage (OpenAI/OpenRouter standard)
+- Defined by configuration
+
+### Goal 3
+
+May be worked on independently of other goals.
+
+- Implement ability to use remote Postgres server matching local container's capabilities.
+- If possible, include Supabase as a remote DB provider
+
+### Goal 4
+
+After goals 2 and 3 are completed.
+
+- Verify UAM works on lightweight machine with the fully remote setup.
+- Verify UAM works with multiple harnesses simultaneously
+- Verify UAM works with multiple machines simultaneously
+
 
 ## Memory Structure
 
