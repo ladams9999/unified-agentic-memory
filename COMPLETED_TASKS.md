@@ -49,6 +49,12 @@ The items below were completed and verified in this implementation pass.
 
 - [x] **P6-2** Initialize the React frontend with Vite in `frontend/`.
 
+## Goal 1: Documentation Alignment
+
+- [x] **G1-1** Rewrote `AGENTS.md` with substantive project summary: architecture, key files table, schema overview, run instructions, hook deployment, and testing notes.
+- [x] **G1-2** Audited `README.md` against current hook formats — Claude Code nested format, Copilot CLI `cwd`-based format, Windows path quoting, and deployment architecture all confirmed accurate and up to date.
+- [x] **G1-3** Deleted the stale `copilot-session-14523fc4-57e7-46ee-adb3-a46a84982d37.md` artifact from the repo root.
+
 ## Phase 7: Testing & Documentation
 
 - [x] **P7-1** Set up `pytest` collection and a local fake-connection testing approach.
