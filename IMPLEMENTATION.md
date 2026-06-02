@@ -103,6 +103,10 @@ The dream phase is intentionally simple and file-oriented:
 
 Scheduling policy is deferred in v1. `pg_cron` is installed so scheduling can be added without changing the core runtime model.
 
+### LLM model selection
+
+The default model is `mistral` (Mistral 7B via Ollama). `phi4-mini` was evaluated but discarded: it enters a repetitive-token loop on structured-output prompts that require fenced ````memory` blocks, producing unusable output. `mistral` follows the format reliably. `phi4-mini-reasoning` is available as an alternative but untested for this workload.
+
 ## Frontend design
 
 The frontend is a small Vite + React dashboard with four surfaces:

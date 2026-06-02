@@ -291,11 +291,19 @@ As with Claude Code, database failures never block the session: the handler logs
 
 For a quick manual smoke pass on a clean machine:
 
+Prerequisites: Docker Desktop, `uv`, Node.js, and Ollama with `nomic-embed-text` and `mistral` pulled (`ollama pull nomic-embed-text && ollama pull mistral`).
+
 1. Start Docker Desktop.
-2. `cd db_stack && docker build -t pguam:18.4 -f Dockerfile_pguam18.4 .`
-3. `docker compose up -d db`
-4. `cd .. && uv sync --dev`
-5. `uv run uam migrate`
-6. Pipe a sample hook payload into `uv run python -m uam.hooks.handler --client claude-code`
-7. `uv run uam search "sample"`
-8. `uv run uam dream --dry-run`
+2. `cd db_stack && cp .env.example .env`
+3. `docker build -t pguam:18.4 -f Dockerfile_pguam18.4 .`
+4. `docker compose up -d db`
+5. `cd .. && uv sync --dev`
+6. `uv run uam migrate`
+7. Pipe a sample hook payload and confirm injection output:
+   ```bash
+   echo '{"hookEvent":"SessionStart","sessionId":"00000000-0000-7000-8000-000000000001","cwd":"/your/project"}' \
+     | uv run python -m uam.hooks.handler --client claude-code
+   # expect: {"system": "..."}
+   ```
+8. `uv run uam search "sample"`
+9. `uv run uam dream --dry-run`

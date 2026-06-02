@@ -49,6 +49,13 @@ The items below were completed and verified in this implementation pass.
 
 - [x] **P6-2** Initialize the React frontend with Vite in `frontend/`.
 
+## Goal 6: Full Smoke Sequence & Final Cleanup
+
+- [x] **P7-9** Ran full README smoke sequence end-to-end: Docker build, migrate (idempotent), hook handler injection, search, dream dry-run — all pass cleanly.
+- [x] Updated README smoke sequence: added prerequisites block (Ollama models), explicit `.env` setup step, copy-pasteable hook payload command.
+- [x] Updated IMPLEMENTATION.md: added LLM model selection note documenting phi4-mini failure and mistral as working choice.
+- [x] Pruned PENDING_TASKS.md: all validated tasks moved to COMPLETED_TASKS; remaining items documented as deferred with rationale.
+
 ## Goal 5: API, MCP, and Frontend Validation
 
 - [x] **P6-1** Validated all 9 FastAPI endpoints return correct JSON against live DB.
