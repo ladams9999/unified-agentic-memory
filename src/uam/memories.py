@@ -7,6 +7,7 @@ from psycopg.types.json import Jsonb
 from .db import get_connection
 from .embeddings import EmbeddingProvider, OllamaEmbeddingProvider
 from .models import Memory
+from .projection import project_memory, remove_memory_projection
 from .uuids import uuid7
 
 
@@ -69,7 +70,12 @@ def upsert_memory(
             """,
             (path,),
         ).fetchone()
-        return _memory_from_row(row)
+        memory = _memory_from_row(row)
+        try:
+            project_memory(active, memory)
+        except Exception:
+            pass
+        return memory
 
 
 def get_memory(path: str, *, conn: Any | None = None) -> Memory | None:
@@ -88,6 +94,11 @@ def get_memory(path: str, *, conn: Any | None = None) -> Memory | None:
 def delete_memory(path: str, *, conn: Any | None = None) -> bool:
     with get_connection(conn) as active:
         deleted = active.execute("DELETE FROM uam.memories WHERE path = %s", (path,)).rowcount
+        if deleted:
+            try:
+                remove_memory_projection(active, path)
+            except Exception:
+                pass
         if conn is None:
             active.commit()
     return bool(deleted)

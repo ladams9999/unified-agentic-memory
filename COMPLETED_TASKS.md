@@ -49,6 +49,14 @@ The items below were completed and verified in this implementation pass.
 
 - [x] **P6-2** Initialize the React frontend with Vite in `frontend/`.
 
+## Element 1: Memory projection into graph (directory hierarchy)
+
+- [x] **G1** — Added `ensure_path_nodes()`, `upsert_memory_node()`, and `delete_memory_node()` to `src/uam/graph.py`. Creates `:Directory` nodes per path segment with `:CHILD` edges; `:Memory` nodes store `{id, path}` only (reference, no content duplication). Orphaned directory nodes pruned on delete.
+- [x] **G2** — Added `project_memory()`, `remove_memory_projection()`, and `replay_relational_memories()` to `src/uam/projection.py`.
+- [x] **G3** — `upsert_memory()` calls `project_memory()` after upsert; `delete_memory()` calls `remove_memory_projection()` after delete (both use same connection; graph errors are non-fatal).
+- [x] **G4** — `replay_relational_memories()` wired into `migrate` CLI command; output reports `memories_projected` count.
+- [x] **G5** — Unit tests added to `tests/test_graph.py`: path hierarchy creation, memory node upsert with parent attachment, flat-path upsert (no parent), delete with orphan pruning, `project_memory` delegation, and `replay_relational_memories` bulk projection. All 15 tests pass.
+
 ## Goal 6: Full Smoke Sequence & Final Cleanup
 
 - [x] **P7-9** Ran full README smoke sequence end-to-end: Docker build, migrate (idempotent), hook handler injection, search, dream dry-run — all pass cleanly.

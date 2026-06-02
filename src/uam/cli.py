@@ -10,6 +10,7 @@ from .db import apply_migrations, close_pool, get_connection, project_root
 from .dream import run_dream
 from .events import list_session_summaries
 from .memories import delete_memory, get_memory, list_memories, upsert_memory
+from .projection import replay_relational_memories
 from .search import hybrid_search
 
 app = typer.Typer(help="Unified agentic memory CLI")
@@ -38,7 +39,10 @@ def migrate() -> None:
     with get_connection() as conn:
         applied = apply_migrations(conn)
         conn.commit()
-    typer.echo(json.dumps({"applied": applied}, indent=2))
+    with get_connection() as conn:
+        memories_projected = replay_relational_memories(conn)
+        conn.commit()
+    typer.echo(json.dumps({"applied": applied, "memories_projected": memories_projected}, indent=2))
 
 
 @app.command()

@@ -2,18 +2,6 @@
 
 ---
 
-## Element 1: Memory projection into graph (directory hierarchy)
-
-Graph nodes hold references (id + path) only — no content duplication. Path hierarchy mimics a markdown directory tree using `:PARENT`/`:CHILD` edges between path-segment nodes.
-
-- [ ] **G1** — Add `ensure_path_nodes(conn, path)`, `upsert_memory_node(conn, memory_id, path)`, and `delete_memory_node(conn, path)` to `src/uam/graph.py`. `ensure_path_nodes` creates an intermediate `:Directory` node for each path segment and links them with `:CHILD` edges. `upsert_memory_node` creates/updates a `:Memory` node storing `{id, path}` and attaches it to its parent directory. `delete_memory_node` removes the `:Memory` node and prunes any `:Directory` nodes that become childless.
-- [ ] **G2** — Add `project_memory(conn, memory)` and `remove_memory_projection(conn, path)` to `src/uam/projection.py` that delegate to the new graph functions.
-- [ ] **G3** — Call `project_memory()` after a successful upsert and `remove_memory_projection()` after a successful delete in `src/uam/memories.py`.
-- [ ] **G4** — Add `replay_relational_memories(conn)` to `src/uam/projection.py` that projects all rows from `uam.memories` into the graph (mirrors `replay_relational_events`). Wire it into the `migrate` CLI command.
-- [ ] **G5** — Add unit tests for graph memory projection: upsert creates nodes + hierarchy, delete removes node + prunes orphan directories, replay rebuilds correctly.
-
----
-
 ## Element 2: Memory types — fact / learning / idea + idea promotion
 
 - [ ] **T1** — Write `db_stack/migrations/0002_memory_type.sql`: add `memory_type TEXT NOT NULL DEFAULT 'learning' CHECK (memory_type IN ('fact', 'learning', 'idea'))` to `uam.memories`.

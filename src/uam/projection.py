@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from .graph import create_event, create_session, link_event
+from .graph import create_event, create_session, delete_memory_node, link_event, upsert_memory_node
 
 
 def project_event(conn: Any, event_row: dict[str, Any]) -> None:
@@ -21,6 +21,36 @@ def project_event(conn: Any, event_row: dict[str, Any]) -> None:
         (session_id, event_row["occurred_at"]),
     ).fetchone()
     link_event(conn, session_id, event_id, previous[0] if previous else None)
+
+
+def project_memory(conn: Any, memory: Any) -> None:
+    upsert_memory_node(conn, memory.id, memory.path)
+
+
+def remove_memory_projection(conn: Any, path: str) -> None:
+    delete_memory_node(conn, path)
+
+
+def replay_relational_memories(conn: Any) -> int:
+    from .models import Memory
+
+    rows = conn.execute(
+        "SELECT id, path, frontmatter, content, embedding, created_at, updated_at FROM uam.memories ORDER BY path"
+    ).fetchall()
+    total = 0
+    for row in rows:
+        memory = Memory(
+            id=row[0],
+            path=row[1],
+            frontmatter=row[2] or {},
+            content=row[3],
+            embedding=row[4],
+            created_at=row[5],
+            updated_at=row[6],
+        )
+        project_memory(conn, memory)
+        total += 1
+    return total
 
 
 def replay_relational_events(conn: Any) -> int:
