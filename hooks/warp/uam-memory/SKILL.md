@@ -11,4 +11,4 @@ Use the following commands for memory operations:
 - `uv run uam delete "<path>"`
 - `uv run uam list "<prefix>"`
 - `uv run uam sessions`
-- `uv run uam dream --dry-run`
+- `uv run uam dream`

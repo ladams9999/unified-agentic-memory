@@ -24,7 +24,7 @@ Python is pinned to `>=3.13`. UUID7 generation comes from the `uuid6` package (`
 - `uv run uam list "topics/"`
 - `uv run uam search "pgvector age" --scope all --limit 5`
 - `uv run uam sessions`
-- `uv run uam dream --dry-run`
+- `uv run uam dream`
 
 ### API
 
