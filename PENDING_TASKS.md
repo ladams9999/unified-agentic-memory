@@ -4,6 +4,14 @@ The items below are still open because they need live Docker/Ollama-backed verif
 
 ---
 
+## Goal 1: Documentation Alignment
+
+- [ ] **G1-1** Rewrite `AGENTS.md` with substantive project summary: what UAM is, architecture overview, key files, and how to run the stack — useful for a coding agent starting cold.
+- [ ] **G1-2** Audit `README.md` against current hook formats (Claude Code nested-hooks format, Copilot CLI `cwd`-based format, Windows path quoting) and update any stale instructions.
+- [ ] **G1-3** Delete the stale `copilot-session-*.md` artifact from the repo root.
+
+---
+
 ## Runtime validation blocked by unavailable local services
 
 - [ ] **P0-3** Validate pg_cron extension creation inside the `postgres` database after container startup.
