@@ -24,17 +24,22 @@ class FakeMemoryConnection:
 
     def execute(self, query: str, params: tuple[Any, ...] | None = None) -> FakeResult:
         params = params or ()
-        if "WHERE path = %s" in query and "SELECT id, path, frontmatter, content, embedding, created_at, updated_at" in query:
+        if "WHERE path = %s" in query and "memory_type" in query and "SELECT" in query:
             row = self.memories.get(params[0])
             return FakeResult([self._row(row)] if row else [])
+        if "UPDATE uam.memories SET memory_type" in query:
+            path = params[0]
+            if path in self.memories:
+                self.memories[path]["memory_type"] = "learning"
+            return FakeResult(rowcount=1)
         if "WHERE path LIKE %s" in query:
             prefix = params[0].rstrip("%")
             rows = [self._row(value) for key, value in sorted(self.memories.items()) if key.startswith(prefix)]
             return FakeResult(rows)
-        if "FROM uam.memories\n                ORDER BY path" in query:
+        if "FROM uam.memories ORDER BY path" in query:
             return FakeResult([self._row(value) for _, value in sorted(self.memories.items())])
         if "INSERT INTO uam.memories" in query:
-            memory_id, path, frontmatter, content, embedding = params
+            memory_id, path, frontmatter, content, memory_type, embedding = params
             now = datetime.now(timezone.utc)
             existing = self.memories.get(path)
             created_at = existing["created_at"] if existing else now
@@ -43,6 +48,7 @@ class FakeMemoryConnection:
                 "path": path,
                 "frontmatter": frontmatter,
                 "content": content,
+                "memory_type": memory_type,
                 "embedding": embedding,
                 "created_at": created_at,
                 "updated_at": now,
@@ -65,6 +71,7 @@ class FakeMemoryConnection:
             row["path"],
             row["frontmatter"],
             row["content"],
+            row.get("memory_type", "learning"),
             row["embedding"],
             row["created_at"],
             row["updated_at"],

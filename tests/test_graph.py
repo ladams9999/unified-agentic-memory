@@ -204,8 +204,8 @@ def test_replay_relational_memories_projects_all(monkeypatch):
 
     now = datetime.now(timezone.utc)
     rows = [
-        (_uuid.uuid4(), "a/b", {}, "content1", None, now, now),
-        (_uuid.uuid4(), "c/d", {}, "content2", None, now, now),
+        (_uuid.uuid4(), "a/b", {}, "content1", "learning", None, now, now),
+        (_uuid.uuid4(), "c/d", {}, "content2", "learning", None, now, now),
     ]
     fake_conn = MagicMock()
     fake_conn.execute.return_value.fetchall.return_value = rows

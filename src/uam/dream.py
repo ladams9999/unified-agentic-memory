@@ -8,7 +8,7 @@ from .db import get_connection
 from .embeddings import EmbeddingProvider
 from .llm import LLMProvider, OllamaLLMProvider
 from .memories import list_memories, upsert_memory
-from .models import DreamRun, Memory
+from .models import DreamRun, Memory, MemoryType
 from .uuids import uuid7
 
 DREAM_OUTPUT_FORMAT = """
@@ -17,9 +17,15 @@ Output one or more fenced memory blocks in the exact format:
 ```memory semantic/path.md
 ---
 title: Example
+type: learning
 ---
 Body text
 ```
+
+The `type` field must be one of:
+- `fact` — a specific, sourced, static observation (never rewritten)
+- `learning` — a synthesized conclusion from multiple facts (can evolve)
+- `idea` — a probable but unconfirmed inference (marked for future review)
 
 Each block path must be unique. Merge with existing knowledge by overwriting the full file content.
 """.strip()
@@ -46,8 +52,8 @@ def build_dream_prompt(events: list[dict[str, Any]], memories: list[Memory]) -> 
     )
 
 
-def parse_memory_blocks(output: str) -> list[tuple[str, dict[str, Any], str]]:
-    blocks: list[tuple[str, dict[str, Any], str]] = []
+def parse_memory_blocks(output: str) -> list[tuple[str, dict[str, Any], str, MemoryType]]:
+    blocks: list[tuple[str, dict[str, Any], str, MemoryType]] = []
     for match in MEMORY_BLOCK_PATTERN.finditer(output):
         path = match.group("path").strip()
         body = match.group("body").strip()
@@ -61,7 +67,12 @@ def parse_memory_blocks(output: str) -> list[tuple[str, dict[str, Any], str]]:
                     continue
                 key, value = line.split(":", 1)
                 frontmatter[key.strip()] = value.strip()
-        blocks.append((path, frontmatter, content.strip()))
+        raw_type = frontmatter.pop("type", "learning")
+        try:
+            memory_type = MemoryType(raw_type)
+        except ValueError:
+            memory_type = MemoryType.learning
+        blocks.append((path, frontmatter, content.strip(), memory_type))
     return blocks
 
 
@@ -111,9 +122,12 @@ def run_dream(
         new_watermark = events[-1]["occurred_at"] if events else watermark
         completed_at = datetime.now(timezone.utc)
         if not dry_run:
-            for path, frontmatter, content in blocks:
-                upsert_memory(path, frontmatter, content, conn=active, embedder=embedder)
-                updated += 1
+            for path, frontmatter, content, memory_type in blocks:
+                try:
+                    upsert_memory(path, frontmatter, content, memory_type=memory_type, conn=active, embedder=embedder)
+                    updated += 1
+                except ValueError:
+                    pass
             active.execute("TRUNCATE uam.search_cache")
             active.execute(
                 """

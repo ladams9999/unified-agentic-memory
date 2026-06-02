@@ -32,10 +32,10 @@ def remove_memory_projection(conn: Any, path: str) -> None:
 
 
 def replay_relational_memories(conn: Any) -> int:
-    from .models import Memory
+    from .models import Memory, MemoryType
 
     rows = conn.execute(
-        "SELECT id, path, frontmatter, content, embedding, created_at, updated_at FROM uam.memories ORDER BY path"
+        "SELECT id, path, frontmatter, content, memory_type, embedding, created_at, updated_at FROM uam.memories ORDER BY path"
     ).fetchall()
     total = 0
     for row in rows:
@@ -44,9 +44,10 @@ def replay_relational_memories(conn: Any) -> int:
             path=row[1],
             frontmatter=row[2] or {},
             content=row[3],
-            embedding=row[4],
-            created_at=row[5],
-            updated_at=row[6],
+            memory_type=MemoryType(row[4]),
+            embedding=row[5],
+            created_at=row[6],
+            updated_at=row[7],
         )
         project_memory(conn, memory)
         total += 1

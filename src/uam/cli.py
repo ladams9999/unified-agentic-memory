@@ -9,7 +9,8 @@ import typer
 from .db import apply_migrations, close_pool, get_connection, project_root
 from .dream import run_dream
 from .events import list_session_summaries
-from .memories import delete_memory, get_memory, list_memories, upsert_memory
+from .memories import confirm_idea, delete_memory, get_memory, list_memories, upsert_memory
+from .models import MemoryType
 from .projection import replay_relational_memories
 from .search import hybrid_search
 
@@ -46,8 +47,13 @@ def migrate() -> None:
 
 
 @app.command()
-def store(path: str, content: str, frontmatter: str = "{}") -> None:
-    memory = upsert_memory(path, json.loads(frontmatter), content)
+def store(
+    path: str,
+    content: str,
+    frontmatter: str = "{}",
+    memory_type: str = "learning",
+) -> None:
+    memory = upsert_memory(path, json.loads(frontmatter), content, memory_type=MemoryType(memory_type))
     typer.echo(memory.model_dump_json(indent=2))
 
 
@@ -67,6 +73,11 @@ def delete_command(path: str) -> None:
 @app.command("list")
 def list_command(prefix: str = "") -> None:
     typer.echo(json.dumps([memory.model_dump(mode="json") for memory in list_memories(prefix or None)], indent=2))
+
+
+@app.command("confirm-idea")
+def confirm_idea_command(path: str) -> None:
+    typer.echo(confirm_idea(path).model_dump_json(indent=2))
 
 
 @app.command()

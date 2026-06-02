@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from datetime import datetime, timezone
+from enum import Enum
 from typing import Any, Literal
 from uuid import UUID
 
@@ -46,11 +47,18 @@ class HookEvent(BaseModel):
         return " ".join(piece for piece in pieces if piece).strip()[:limit]
 
 
+class MemoryType(str, Enum):
+    fact = "fact"
+    learning = "learning"
+    idea = "idea"
+
+
 class Memory(BaseModel):
     id: UUID
     path: str
     frontmatter: dict[str, Any] = Field(default_factory=dict)
     content: str
+    memory_type: MemoryType = MemoryType.learning
     embedding: list[float] | None = None
     created_at: datetime = Field(default_factory=utc_now)
     updated_at: datetime = Field(default_factory=utc_now)

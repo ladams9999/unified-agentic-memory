@@ -61,7 +61,7 @@ def test_run_dream_upserts_memories(monkeypatch):
     monkeypatch.setattr(
         dream,
         "upsert_memory",
-        lambda path, frontmatter, content, conn=None, embedder=None: stored.append((path, frontmatter, content)),
+        lambda path, frontmatter, content, memory_type=None, conn=None, embedder=None: stored.append((path, frontmatter, content)),
     )
 
     result = dream.run_dream(conn=conn, llm=FakeLLM())

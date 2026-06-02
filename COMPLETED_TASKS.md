@@ -49,6 +49,17 @@ The items below were completed and verified in this implementation pass.
 
 - [x] **P6-2** Initialize the React frontend with Vite in `frontend/`.
 
+## Element 2: Memory types — fact / learning / idea + idea promotion
+
+- [x] **T1** — Added `db_stack/migrations/0002_memory_type.sql`: `memory_type TEXT NOT NULL DEFAULT 'learning' CHECK (memory_type IN ('fact', 'learning', 'idea'))`.
+- [x] **T2** — Added `MemoryType` enum (`fact`, `learning`, `idea`) to `src/uam/models.py`; added `memory_type: MemoryType = MemoryType.learning` to `Memory`.
+- [x] **T3** — Updated all SQL in `src/uam/memories.py` to include `memory_type`; `_memory_from_row()` reads column index 4 for type, shifting embedding/timestamps; `upsert_memory()` accepts `memory_type` param.
+- [x] **T4** — `upsert_memory()` raises `ValueError` if existing record has `memory_type='fact'`.
+- [x] **T5** — Added `confirm_idea(path)` to `src/uam/memories.py`; raises if missing or not an idea, else sets `memory_type='learning'`.
+- [x] **T6** — `src/uam/mcp_server.py`: added `uam_confirm_idea` tool; `uam_store` now accepts `memory_type` param (fact writes flow through upsert guard automatically).
+- [x] **T7** — Updated `DREAM_OUTPUT_FORMAT` in `src/uam/dream.py` to require `type:` in frontmatter with definitions of each type. `parse_memory_blocks()` extracts and returns `MemoryType`; invalid values default to `learning`. Dream silently skips fact-overwrite errors.
+- [x] **T8** — Added `confirm-idea <path>` subcommand to CLI; `store` accepts `--memory-type` option. `memory_type` appears in all `model_dump_json` outputs automatically.
+
 ## Element 1: Memory projection into graph (directory hierarchy)
 
 - [x] **G1** — Added `ensure_path_nodes()`, `upsert_memory_node()`, and `delete_memory_node()` to `src/uam/graph.py`. Creates `:Directory` nodes per path segment with `:CHILD` edges; `:Memory` nodes store `{id, path}` only (reference, no content duplication). Orphaned directory nodes pruned on delete.

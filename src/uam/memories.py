@@ -6,9 +6,11 @@ from psycopg.types.json import Jsonb
 
 from .db import get_connection
 from .embeddings import EmbeddingProvider, OllamaEmbeddingProvider
-from .models import Memory
+from .models import Memory, MemoryType
 from .projection import project_memory, remove_memory_projection
 from .uuids import uuid7
+
+_SELECT_COLS = "id, path, frontmatter, content, memory_type, embedding, created_at, updated_at"
 
 
 def _unwrap_json(value: Any) -> Any:
@@ -21,9 +23,10 @@ def _memory_from_row(row: Any) -> Memory:
         path=row[1],
         frontmatter=_unwrap_json(row[2]) or {},
         content=row[3],
-        embedding=row[4],
-        created_at=row[5],
-        updated_at=row[6],
+        memory_type=MemoryType(row[4]),
+        embedding=row[5],
+        created_at=row[6],
+        updated_at=row[7],
     )
 
 
@@ -32,42 +35,38 @@ def upsert_memory(
     frontmatter: dict[str, Any],
     content: str,
     *,
+    memory_type: MemoryType = MemoryType.learning,
     conn: Any | None = None,
     embedder: EmbeddingProvider | None = None,
 ) -> Memory:
     with get_connection(conn) as active:
         existing = active.execute(
-            """
-            SELECT id, path, frontmatter, content, embedding, created_at, updated_at
-            FROM uam.memories
-            WHERE path = %s
-            """,
+            f"SELECT {_SELECT_COLS} FROM uam.memories WHERE path = %s",
             (path,),
         ).fetchone()
+        if existing and existing[4] == MemoryType.fact.value:
+            raise ValueError(f"Cannot overwrite fact memory at path '{path}'")
         provider = embedder or OllamaEmbeddingProvider()
-        embedding = existing[4] if existing and existing[3] == content else provider.embed(content)
+        embedding = existing[5] if existing and existing[3] == content else provider.embed(content)
         memory_id = existing[0] if existing else uuid7()
 
         active.execute(
             """
-            INSERT INTO uam.memories (id, path, frontmatter, content, embedding)
-            VALUES (%s, %s, %s, %s, %s)
+            INSERT INTO uam.memories (id, path, frontmatter, content, memory_type, embedding)
+            VALUES (%s, %s, %s, %s, %s, %s)
             ON CONFLICT (path) DO UPDATE
             SET frontmatter = EXCLUDED.frontmatter,
                 content = EXCLUDED.content,
+                memory_type = EXCLUDED.memory_type,
                 embedding = EXCLUDED.embedding,
                 updated_at = NOW()
             """,
-            (memory_id, path, Jsonb(frontmatter), content, embedding),
+            (memory_id, path, Jsonb(frontmatter), content, memory_type.value, embedding),
         )
         if conn is None:
             active.commit()
         row = active.execute(
-            """
-            SELECT id, path, frontmatter, content, embedding, created_at, updated_at
-            FROM uam.memories
-            WHERE path = %s
-            """,
+            f"SELECT {_SELECT_COLS} FROM uam.memories WHERE path = %s",
             (path,),
         ).fetchone()
         memory = _memory_from_row(row)
@@ -78,14 +77,33 @@ def upsert_memory(
         return memory
 
 
+def confirm_idea(path: str, *, conn: Any | None = None) -> Memory:
+    with get_connection(conn) as active:
+        row = active.execute(
+            f"SELECT {_SELECT_COLS} FROM uam.memories WHERE path = %s",
+            (path,),
+        ).fetchone()
+        if row is None:
+            raise ValueError(f"Memory not found: '{path}'")
+        if row[4] != MemoryType.idea.value:
+            raise ValueError(f"Memory at '{path}' is not an idea (type: {row[4]})")
+        active.execute(
+            "UPDATE uam.memories SET memory_type = 'learning', updated_at = NOW() WHERE path = %s",
+            (path,),
+        )
+        if conn is None:
+            active.commit()
+        row = active.execute(
+            f"SELECT {_SELECT_COLS} FROM uam.memories WHERE path = %s",
+            (path,),
+        ).fetchone()
+    return _memory_from_row(row)
+
+
 def get_memory(path: str, *, conn: Any | None = None) -> Memory | None:
     with get_connection(conn) as active:
         row = active.execute(
-            """
-            SELECT id, path, frontmatter, content, embedding, created_at, updated_at
-            FROM uam.memories
-            WHERE path = %s
-            """,
+            f"SELECT {_SELECT_COLS} FROM uam.memories WHERE path = %s",
             (path,),
         ).fetchone()
     return _memory_from_row(row) if row else None
@@ -108,20 +126,11 @@ def list_memories(prefix: str | None = None, *, conn: Any | None = None) -> list
     with get_connection(conn) as active:
         if prefix:
             rows = active.execute(
-                """
-                SELECT id, path, frontmatter, content, embedding, created_at, updated_at
-                FROM uam.memories
-                WHERE path LIKE %s
-                ORDER BY path
-                """,
+                f"SELECT {_SELECT_COLS} FROM uam.memories WHERE path LIKE %s ORDER BY path",
                 (f"{prefix}%",),
             ).fetchall()
         else:
             rows = active.execute(
-                """
-                SELECT id, path, frontmatter, content, embedding, created_at, updated_at
-                FROM uam.memories
-                ORDER BY path
-                """
+                f"SELECT {_SELECT_COLS} FROM uam.memories ORDER BY path"
             ).fetchall()
     return [_memory_from_row(row) for row in rows]

@@ -4,7 +4,8 @@ from mcp.server.fastmcp import FastMCP
 
 from .dream import run_dream
 from .events import list_session_summaries
-from .memories import delete_memory, get_memory, list_memories, upsert_memory
+from .memories import confirm_idea, delete_memory, get_memory, list_memories, upsert_memory
+from .models import MemoryType
 from .search import hybrid_search
 
 mcp = FastMCP("uam-memory")
@@ -16,8 +17,14 @@ def uam_search(query: str, scope: str = "all", limit: int = 5) -> list[dict]:
 
 
 @mcp.tool()
-def uam_store(path: str, content: str, frontmatter: dict | None = None) -> dict:
-    return upsert_memory(path, frontmatter or {}, content).model_dump(mode="json")
+def uam_store(
+    path: str,
+    content: str,
+    frontmatter: dict | None = None,
+    memory_type: str = "learning",
+) -> dict:
+    mt = MemoryType(memory_type)
+    return upsert_memory(path, frontmatter or {}, content, memory_type=mt).model_dump(mode="json")
 
 
 @mcp.tool()
@@ -39,6 +46,11 @@ def uam_list(prefix: str = "") -> list[dict]:
 @mcp.tool()
 def uam_sessions(limit: int = 20) -> dict:
     return {"sessions": list_session_summaries(limit=limit)}
+
+
+@mcp.tool()
+def uam_confirm_idea(path: str) -> dict:
+    return confirm_idea(path).model_dump(mode="json")
 
 
 @mcp.tool()
