@@ -102,8 +102,6 @@ def dream(dry_run: bool = False) -> None:
     typer.echo(run_dream(dry_run=dry_run).model_dump_json(indent=2))
 
 
-_HOOK_CLIENT_CHOICES = ("copilot", "claude-code", "codex")
-
 # Maps each client to:
 #   template_path  — relative path inside hooks/<client>/
 #   dest_path      — where the file is written inside --target-dir
@@ -156,9 +154,9 @@ def install_hooks(
     and exits without overwriting, so that manual merges (e.g. for
     .claude/settings.json) are never silently lost.
     """
-    if client not in _HOOK_CLIENT_CHOICES:
+    if client not in _HOOK_INSTALL_MAP:
         typer.echo(
-            f"Unknown client '{client}'. Choose from: {', '.join(_HOOK_CLIENT_CHOICES)}",
+            f"Unknown client '{client}'. Choose from: {', '.join(_HOOK_INSTALL_MAP)}",
             err=True,
         )
         raise typer.Exit(code=1)
@@ -175,7 +173,7 @@ def install_hooks(
     # Normalise the UAM root to forward slashes so the substituted path is
     # portable on all platforms (the uv --directory flag accepts both on
     # Windows, and forward slashes are required on macOS/Linux).
-    uam_root_str = str(uam_root).replace("\\", "/")
+    uam_root_str = uam_root.as_posix()
     content = raw.replace("<UAM_PROJECT_DIR>", uam_root_str)
 
     dest = target_dir / spec["dest"]
