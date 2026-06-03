@@ -124,6 +124,7 @@ The items below were completed and verified in this implementation pass.
 
 - [x] **G2-1** — Extended `Settings` in `config.py` with `embedding_provider`, `llm_provider`, OpenAI fields, and OpenRouter fields. Created root `.env.example` documenting all UAM env vars including the new provider settings.
 - [x] **G2-2** — Added `OpenAIEmbeddingProvider` to `embeddings.py` (POSTs to OpenAI `/embeddings` with `dimensions=768`); added `get_embedding_provider()` factory returning the right provider based on `settings.embedding_provider`.
+- [x] **G2-3** — Added `OpenAILLMProvider` and `OpenRouterLLMProvider` to `llm.py`; both use OpenAI chat completions format; OpenRouter adds `HTTP-Referer` header. Added `get_llm_provider()` factory.
 
 ## Goal 1: Documentation Alignment
 
