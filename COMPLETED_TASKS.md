@@ -120,6 +120,10 @@ The items below were completed and verified in this implementation pass.
 - [x] **P1b-3** Validated psycopg pool connects to `uam_db` on PostgreSQL 18.4; `ensure_age()` sets `ag_catalog` in `search_path`.
 - [x] **P1b-5** Validated `nomic-embed-text` via `OllamaEmbeddingProvider` returns 768-dimension vectors.
 
+## Goal 1: Cross-Platform Harness Integration
+
+- [x] **G1-CP-1** Audited all four hook configs for platform correctness. `hooks/codex/hooks.json` was missing the `--directory "<UAM_PROJECT_DIR>"` flag on `uv run`, meaning the handler would fail when invoked from the observed project's directory instead of the UAM root. Added `--directory "<UAM_PROJECT_DIR>"` to all six Codex hook commands. Claude Code template already uses `--directory`; Copilot template already uses `cwd`; Warp SKILL.md uses `uv run uam` with no hardcoded paths — all three are platform-neutral.
+
 ## Goal 1: Documentation Alignment
 
 - [x] **G1-1** Rewrote `AGENTS.md` with substantive project summary: architecture, key files table, schema overview, run instructions, hook deployment, and testing notes.
