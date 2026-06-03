@@ -6,7 +6,7 @@ from typing import Any
 
 from .db import get_connection
 from .embeddings import EmbeddingProvider
-from .llm import LLMProvider, OllamaLLMProvider
+from .llm import LLMProvider, get_llm_provider
 from .memories import list_memories, upsert_memory
 from .models import DreamRun, Memory, MemoryType
 from .uuids import uuid7
@@ -113,7 +113,7 @@ def run_dream(
             for row in rows
         ]
         current_memories = list_memories(conn=active)
-        provider = llm or OllamaLLMProvider()
+        provider = llm or get_llm_provider()
         prompt = build_dream_prompt(events, current_memories)
         response = provider.generate(prompt, system="You maintain concise durable workspace memories.")
         blocks = parse_memory_blocks(response)

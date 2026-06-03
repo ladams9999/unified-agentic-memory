@@ -5,7 +5,7 @@ from typing import Any
 from psycopg.types.json import Jsonb
 
 from .db import get_connection
-from .embeddings import EmbeddingProvider, OllamaEmbeddingProvider
+from .embeddings import EmbeddingProvider, get_embedding_provider
 from .models import HookEvent
 from .projection import project_event
 from .vectors import store_embedding
@@ -68,7 +68,7 @@ def log_event(
         )
         content = event.embedding_text()
         if content:
-            provider = embedder or OllamaEmbeddingProvider()
+            provider = embedder or get_embedding_provider()
             store_embedding(
                 active,
                 event_id=event.id,
