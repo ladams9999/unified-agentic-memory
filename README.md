@@ -84,10 +84,14 @@ UAM will detect that AGE is not installed and skip the AGE migration (`0003_age_
 - `uv run uam migrate`
 - `uv run uam store "topics/postgres.md" "Use pgvector and AGE." --frontmatter '{"title":"Postgres"}'`
 - `uv run uam get "topics/postgres.md"`
+- `uv run uam delete "topics/postgres.md"`
 - `uv run uam list "topics/"`
 - `uv run uam search "pgvector age" --scope all --limit 5`
 - `uv run uam sessions`
 - `uv run uam dream`
+- `uv run uam confirm-idea "topics/postgres.md"`
+- `uv run uam install-hooks --client claude-code --target-dir .`
+- `uv run uam check-providers`
 
 ### API
 
@@ -109,7 +113,7 @@ Start the MCP server with:
 
 `uv run python -m uam.mcp_server`
 
-The server exposes `uam_search`, `uam_store`, `uam_get`, `uam_delete`, `uam_list`, `uam_sessions`, and `uam_dream`.
+The server exposes `uam_search`, `uam_store`, `uam_get`, `uam_delete`, `uam_list`, `uam_sessions`, `uam_confirm_idea`, and `uam_dream`.
 
 ## Hook Installation
 

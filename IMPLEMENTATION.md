@@ -28,7 +28,7 @@ Dream phase -> uam.dream.run_dream -> LLM -> parsed memory blocks -> uam.memorie
   - `hooks/`: handler, injector, and latency metrics
   - `api.py`: FastAPI service
   - `mcp_server.py`: FastMCP server
-  - `cli.py`: Typer CLI
+  - `cli.py`: Typer CLI (`search`, `store`, `get`, `delete`, `list`, `confirm-idea`, `sessions`, `dream`, `migrate`, `install-hooks`, `check-providers`)
 
 ## Database schema
 
@@ -43,6 +43,8 @@ Dream phase -> uam.dream.run_dream -> LLM -> parsed memory blocks -> uam.memorie
   - `uam.schema_migrations`: applied migration tracking
 - `0002_memory_type.sql`
   - Adds `memory_type TEXT NOT NULL DEFAULT 'learning' CHECK (memory_type IN ('fact', 'learning', 'idea'))` to `uam.memories`
+- `0003_age_graph.sql`
+  - Creates the Apache AGE graph `uam`; skipped automatically by the migration runner when AGE is not installed (e.g. Supabase)
 
 Apache AGE graph `uam` uses labels:
 
@@ -103,9 +105,15 @@ The dream phase is intentionally simple and file-oriented:
 
 Scheduling policy is deferred in v1. `pg_cron` is installed so scheduling can be added without changing the core runtime model.
 
-### LLM model selection
+### LLM and embedding provider selection
 
-The default model is `mistral` (Mistral 7B via Ollama). `phi4-mini` was evaluated but discarded: it enters a repetitive-token loop on structured-output prompts that require fenced ````memory` blocks, producing unusable output. `mistral` follows the format reliably. `phi4-mini-reasoning` is available as an alternative but untested for this workload.
+The provider is selected via `UAM_LLM_PROVIDER` (`ollama` | `openai` | `openrouter`) and `UAM_EMBEDDING_PROVIDER` (`ollama` | `openai`). Both default to `ollama`.
+
+**Ollama (default):** `UAM_LLM_MODEL=mistral` (Mistral 7B). `phi4-mini` was evaluated but discarded: it enters a repetitive-token loop on structured-output prompts that require fenced ` ```memory ``` ` blocks. `mistral` follows the format reliably. `phi4-mini-reasoning` is available but untested.
+
+**OpenAI:** `UAM_OPENAI_LLM_MODEL=gpt-4o-mini` (default). Embedding model defaults to `text-embedding-3-small` with `dimensions=768` to match the existing pgvector schema — no migration required.
+
+**OpenRouter:** `UAM_OPENROUTER_LLM_MODEL=mistralai/mistral-7b-instruct` (default). OpenRouter does not expose an embeddings endpoint; use `UAM_EMBEDDING_PROVIDER=openai` alongside `UAM_LLM_PROVIDER=openrouter`.
 
 ## Frontend design
 

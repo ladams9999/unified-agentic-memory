@@ -48,8 +48,8 @@ Hook handlers are deterministic and model-free. They always exit `0`; a dead dat
 | `src/uam/hooks/handler.py` | Hook event normalization, logging, injection output |
 | `src/uam/hooks/injector.py` | Profile and search injection payloads |
 | `src/uam/api.py` | FastAPI service (9 endpoints) |
-| `src/uam/mcp_server.py` | FastMCP server (7 tools) |
-| `src/uam/cli.py` | Typer CLI (`search`, `store`, `get`, `delete`, `list`, `sessions`, `dream`, `migrate`) |
+| `src/uam/mcp_server.py` | FastMCP server (8 tools) |
+| `src/uam/cli.py` | Typer CLI (`search`, `store`, `get`, `delete`, `list`, `confirm-idea`, `sessions`, `dream`, `migrate`, `install-hooks`, `check-providers`) |
 | `db_stack/Dockerfile_pguam18.4` | Custom Postgres 18 image with pgvector, Apache AGE, pg_cron |
 | `db_stack/docker-compose.yml` | Compose stack; binds `db_stack/db_data/` as data dir |
 | `db_stack/schema.sql` | Full schema: tables, indexes, AGE graph, triggers |
@@ -68,7 +68,7 @@ Hook handlers are deterministic and model-free. They always exit `0`; a dead dat
 - `uam.search_cache` — cached hybrid search results with TTL
 - `uam.schema_migrations` — applied migration tracking
 
-AGE graph `uam`: vertices `Session`, `Event`, `Memory`; edges `HAS_EVENT`, `NEXT_EVENT`, `REMEMBERS`.
+AGE graph `uam`: vertices `Session`, `Event`, `Directory`, `Memory`; edges `HAS_EVENT`, `NEXT_EVENT`, `CHILD`.
 
 ## Running the stack
 
