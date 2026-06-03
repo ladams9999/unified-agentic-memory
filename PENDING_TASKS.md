@@ -2,12 +2,6 @@
 
 ---
 
-## Goal 1: Cross-Platform Harness Integration
-
-- [ ] **G1-CP-4** Update `README.md`: add platform support matrix table, macOS/Linux prerequisites for `uv`, and `uam install-hooks` usage examples for each client.
-
----
-
 ## Deferred by design (v1 scope)
 
 - **pg_cron scheduling policy** — `pg_cron` is installed and smoke-tested. Specific schedule cadence for the dream phase is intentionally deferred until real usage data is available.
