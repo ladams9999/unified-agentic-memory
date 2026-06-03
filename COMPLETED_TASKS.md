@@ -129,6 +129,13 @@ The items below were completed and verified in this implementation pass.
 - [x] **G2-5** — Added `uam check-providers` CLI command; tests both configured providers with a real embed/generate call and prints success/failure per provider. Exits 0 if all pass, 1 if any fail.
 - [x] **G2-6** — Added `tests/test_providers.py` with 14 unit tests covering `OpenAIEmbeddingProvider`, `OpenAILLMProvider`, `OpenRouterLLMProvider`, and both factory functions using mocked httpx responses. All 29 tests pass.
 
+## Goal 1: Cross-Platform Harness Integration
+
+- [x] **G1-CP-4** Updated `README.md`: added platform support matrix table (Copilot/Claude Code/Codex/Warp x Windows/macOS/Linux), macOS/Linux `uv` installation prerequisites, and a new "Installing hooks with `uam install-hooks`" section with the destination table, idempotency explanation, and per-platform usage examples.
+- [x] **G1-CP-3** Added `uam install-hooks` CLI command to `src/uam/cli.py`. Options: `--client` (copilot/claude-code/codex) and `--target-dir`. Reads the template from `hooks/<client>/`, substitutes the UAM root path (forward-slash normalised) for `<UAM_PROJECT_DIR>`, and writes to the correct relative location inside `--target-dir` (copilot → `.github/hooks/uam-memory.json`; claude-code → `.claude/settings.json`; codex → `.codex/hooks.json`). Idempotent: reports "already up to date" when content matches; warns and exits non-zero when destination exists with different content. Seven new unit tests added in `tests/test_cli.py`; all 26 tests pass.
+- [x] **G1-CP-2** Added `_normalize_path()` helper to `src/uam/hooks/handler.py`; applied to the `cwd` field in `normalize_payload()` so Windows backslash paths (`C:\Users\...`) are stored as forward-slash paths (`C:/Users/...`). Added four new tests in `tests/test_hooks.py` covering Windows paths, Unix paths, missing cwd, and the `workspace` alias — all pass.
+- [x] **G1-CP-1** Audited all four hook configs for platform correctness. `hooks/codex/hooks.json` was missing the `--directory "<UAM_PROJECT_DIR>"` flag on `uv run`, meaning the handler would fail when invoked from the observed project's directory instead of the UAM root. Added `--directory "<UAM_PROJECT_DIR>"` to all six Codex hook commands. Claude Code template already uses `--directory`; Copilot template already uses `cwd`; Warp SKILL.md uses `uv run uam` with no hardcoded paths — all three are platform-neutral.
+
 ## Goal 1: Documentation Alignment
 
 - [x] **G1-1** Rewrote `AGENTS.md` with substantive project summary: architecture, key files table, schema overview, run instructions, hook deployment, and testing notes.

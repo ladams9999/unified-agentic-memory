@@ -64,6 +64,49 @@ def test_handler_exits_zero_and_logs(monkeypatch, tmp_path):
     assert (tmp_path / "hook_metrics_summary.json").exists()
 
 
+def test_cwd_windows_backslashes_normalized():
+    """Windows-style cwd with backslashes is stored as forward slashes."""
+    payload = {
+        "sessionId": "018fc5bb-53d4-7b80-95a0-e1b64116f0c0",
+        "eventName": "SessionStart",
+        "cwd": "C:\\Users\\test\\my-project",
+    }
+    event = handler.normalize_payload("claude-code", payload)
+    assert event.cwd == "C:/Users/test/my-project"
+
+
+def test_cwd_unix_paths_unchanged():
+    """Unix-style cwd paths pass through unchanged."""
+    payload = {
+        "sessionId": "018fc5bb-53d4-7b80-95a0-e1b64116f0c0",
+        "eventName": "SessionStart",
+        "cwd": "/home/user/project",
+    }
+    event = handler.normalize_payload("copilot", payload)
+    assert event.cwd == "/home/user/project"
+
+
+def test_cwd_missing_is_none():
+    """Missing cwd results in None without raising."""
+    payload = {
+        "sessionId": "018fc5bb-53d4-7b80-95a0-e1b64116f0c0",
+        "eventName": "SessionStart",
+    }
+    event = handler.normalize_payload("claude-code", payload)
+    assert event.cwd is None
+
+
+def test_cwd_workspace_alias_normalized():
+    """workspace field is used as cwd fallback and backslashes are normalized."""
+    payload = {
+        "sessionId": "018fc5bb-53d4-7b80-95a0-e1b64116f0c0",
+        "eventName": "SessionStart",
+        "workspace": "C:\\Users\\test\\workspace",
+    }
+    event = handler.normalize_payload("codex", payload)
+    assert event.cwd == "C:/Users/test/workspace"
+
+
 def test_copilot_session_start_uses_additional_context(monkeypatch, capsys):
     monkeypatch.setattr(handler, "log_event", lambda event: None)
     monkeypatch.setattr(
