@@ -4,7 +4,7 @@
 
 ## Goal 2: Remote Model Support
 
-- [ ] **G2-1** — Extend `Settings` in `config.py` with `embedding_provider`, `llm_provider`, OpenAI fields (`openai_api_key`, `openai_embedding_model`, `openai_llm_model`, `openai_base_url`), and OpenRouter fields (`openrouter_api_key`, `openrouter_base_url`, `openrouter_llm_model`). Update `.env.example` with the new vars.
+- [x] **G2-1** — Extend `Settings` in `config.py` with `embedding_provider`, `llm_provider`, OpenAI fields (`openai_api_key`, `openai_embedding_model`, `openai_llm_model`, `openai_base_url`), and OpenRouter fields (`openrouter_api_key`, `openrouter_base_url`, `openrouter_llm_model`). Update `.env.example` with the new vars.
 - [ ] **G2-2** — Add `OpenAIEmbeddingProvider` to `embeddings.py` and a `get_embedding_provider()` factory function.
 - [ ] **G2-3** — Add `OpenAILLMProvider` and `OpenRouterLLMProvider` to `llm.py` and a `get_llm_provider()` factory function.
 - [ ] **G2-4** — Wire factory functions into all call sites: replace direct `OllamaEmbeddingProvider()` / `OllamaLLMProvider()` instantiation in `events.py`, `vectors.py`, and `dream.py`.
