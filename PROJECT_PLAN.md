@@ -2,34 +2,39 @@
 
 Build a single, shared memory layer for work across multiple coding agents: Claude Code, Github Copilot, Codex, and Warp.
 
+## Completed Goals
+
+### Goal 1 — Cross-platform harness integration ✓
+
+- Hook config templates for GitHub Copilot, Claude Code, Codex, and Warp audited and corrected for all platforms (Windows, macOS, Linux).
+- `uam install-hooks --client <harness> --target-dir <path>` CLI command added: reads the template, substitutes the UAM project path, and writes the hook file to the correct location in the target project. Idempotent.
+- `cwd` field in incoming hook payloads normalized to forward slashes on all platforms (Windows backslash paths stored consistently).
+- README updated with a platform support matrix and macOS/Linux prerequisites.
+
+### Goal 2 — Remote model support ✓
+
+- OpenAI and OpenRouter added as configurable providers for both embeddings and LLM generation alongside the existing Ollama provider.
+- Provider selected via `UAM_EMBEDDING_PROVIDER` (`ollama` | `openai`) and `UAM_LLM_PROVIDER` (`ollama` | `openai` | `openrouter`).
+- OpenAI embedding requests pin `dimensions=768` to match the existing pgvector schema — no migration required.
+- `uam check-providers` CLI command added to validate connectivity for the configured providers.
+- All factory calls raise `ValueError` on unrecognised provider names (no silent fallback).
+
+### Goal 3 — Remote Postgres / Supabase support ✓
+
+- SSL connection string support: `UAM_DB_SSLMODE` setting (default `prefer`; set to `require` for Supabase or remote TLS).
+- Apache AGE made optional: `UAM_DISABLE_GRAPH=true` disables graph projection; all other features (events, memories, search, dream, session timeline, MCP) continue to work.
+- AGE DDL extracted from the base migration into `db_stack/migrations/0002_age_graph.sql`; the migration runner automatically skips it when AGE is not installed, printing a warning to stderr.
+- Supabase setup documented in README.
+
 ## Current Goals
-
-### Goal 1
-
-- Get the memory working for Github Copilot first, on Windows, MacOS, and Linux
-- Then get the memory working for Claude Code, Codex, and Warp on same.
-
-### Goal 2
-
-May be worked on independently of other goals.
-
-- Implement remote model usage (OpenAI/OpenRouter standard)
-- Defined by configuration
-
-### Goal 3
-
-May be worked on independently of other goals.
-
-- Implement ability to use remote Postgres server matching local container's capabilities.
-- If possible, include Supabase as a remote DB provider
 
 ### Goal 4
 
-After goals 2 and 3 are completed.
+Prerequisites: Goals 2 and 3 (both complete).
 
-- Verify UAM works on lightweight machine with the fully remote setup.
-- Verify UAM works with multiple harnesses simultaneously
-- Verify UAM works with multiple machines simultaneously
+- Verify UAM works end-to-end on a lightweight machine using a fully remote setup (remote Postgres + remote model provider).
+- Verify UAM works with multiple harnesses running simultaneously against the same database.
+- Verify UAM works across multiple machines simultaneously.
 
 
 ## Memory Structure
