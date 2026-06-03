@@ -123,6 +123,7 @@ The items below were completed and verified in this implementation pass.
 ## Goal 2: Remote Model Support
 
 - [x] **G2-1** — Extended `Settings` in `config.py` with `embedding_provider`, `llm_provider`, OpenAI fields, and OpenRouter fields. Created root `.env.example` documenting all UAM env vars including the new provider settings.
+- [x] **G2-2** — Added `OpenAIEmbeddingProvider` to `embeddings.py` (POSTs to OpenAI `/embeddings` with `dimensions=768`); added `get_embedding_provider()` factory returning the right provider based on `settings.embedding_provider`.
 
 ## Goal 1: Documentation Alignment
 
