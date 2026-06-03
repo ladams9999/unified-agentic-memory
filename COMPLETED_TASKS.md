@@ -127,6 +127,7 @@ The items below were completed and verified in this implementation pass.
 - [x] **G2-3** — Added `OpenAILLMProvider` and `OpenRouterLLMProvider` to `llm.py`; both use OpenAI chat completions format; OpenRouter adds `HTTP-Referer` header. Added `get_llm_provider()` factory.
 - [x] **G2-4** — Replaced all direct `OllamaEmbeddingProvider()` / `OllamaLLMProvider()` instantiation with factory calls in `events.py`, `memories.py`, `search.py`, and `dream.py`.
 - [x] **G2-5** — Added `uam check-providers` CLI command; tests both configured providers with a real embed/generate call and prints success/failure per provider. Exits 0 if all pass, 1 if any fail.
+- [x] **G2-6** — Added `tests/test_providers.py` with 14 unit tests covering `OpenAIEmbeddingProvider`, `OpenAILLMProvider`, `OpenRouterLLMProvider`, and both factory functions using mocked httpx responses. All 29 tests pass.
 
 ## Goal 1: Documentation Alignment
 
