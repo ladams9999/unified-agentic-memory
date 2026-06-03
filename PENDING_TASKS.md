@@ -4,7 +4,6 @@
 
 ## Goal 1: Cross-Platform Harness Integration
 
-- [ ] **G1-CP-2** Add cwd path normalization in `src/uam/hooks/handler.py`: normalize `cwd` and other path fields to forward slashes; add tests in `tests/test_hooks.py` for Windows-style cwd input.
 - [ ] **G1-CP-3** Add `uam install-hooks` CLI command to `src/uam/cli.py` with `--client` (copilot/claude-code/codex) and `--target-dir` options; reads template, substitutes `<UAM_PROJECT_DIR>`, writes to correct location in target dir.
 - [ ] **G1-CP-4** Update `README.md`: add platform support matrix table, macOS/Linux prerequisites for `uv`, and `uam install-hooks` usage examples for each client.
 

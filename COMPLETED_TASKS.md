@@ -122,6 +122,7 @@ The items below were completed and verified in this implementation pass.
 
 ## Goal 1: Cross-Platform Harness Integration
 
+- [x] **G1-CP-2** Added `_normalize_path()` helper to `src/uam/hooks/handler.py`; applied to the `cwd` field in `normalize_payload()` so Windows backslash paths (`C:\Users\...`) are stored as forward-slash paths (`C:/Users/...`). Added four new tests in `tests/test_hooks.py` covering Windows paths, Unix paths, missing cwd, and the `workspace` alias — all pass.
 - [x] **G1-CP-1** Audited all four hook configs for platform correctness. `hooks/codex/hooks.json` was missing the `--directory "<UAM_PROJECT_DIR>"` flag on `uv run`, meaning the handler would fail when invoked from the observed project's directory instead of the UAM root. Added `--directory "<UAM_PROJECT_DIR>"` to all six Codex hook commands. Claude Code template already uses `--directory`; Copilot template already uses `cwd`; Warp SKILL.md uses `uv run uam` with no hardcoded paths — all three are platform-neutral.
 
 ## Goal 1: Documentation Alignment
