@@ -92,8 +92,13 @@ class OpenRouterLLMProvider(LLMProvider):
 
 
 def get_llm_provider() -> LLMProvider:
+    if settings.llm_provider == "ollama":
+        return OllamaLLMProvider()
     if settings.llm_provider == "openai":
         return OpenAILLMProvider()
     if settings.llm_provider == "openrouter":
         return OpenRouterLLMProvider()
-    return OllamaLLMProvider()
+    raise ValueError(
+        f"Unknown LLM provider {settings.llm_provider!r}. "
+        "Set UAM_LLM_PROVIDER to 'ollama', 'openai', or 'openrouter'."
+    )

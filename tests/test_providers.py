@@ -1,6 +1,7 @@
 """Tests for OpenAI and OpenRouter provider implementations and factories."""
 from __future__ import annotations
 
+import pytest
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -193,3 +194,15 @@ def test_get_llm_provider_returns_openrouter():
     ):
         provider = get_llm_provider()
     assert isinstance(provider, OpenRouterLLMProvider)
+
+
+def test_get_embedding_provider_raises_on_unknown():
+    with patch.object(emb_module.settings, "embedding_provider", "openAi"):
+        with pytest.raises(ValueError, match="Unknown embedding provider"):
+            get_embedding_provider()
+
+
+def test_get_llm_provider_raises_on_unknown():
+    with patch.object(llm_module.settings, "llm_provider", "grok"):
+        with pytest.raises(ValueError, match="Unknown LLM provider"):
+            get_llm_provider()

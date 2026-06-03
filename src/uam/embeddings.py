@@ -55,6 +55,11 @@ class OpenAIEmbeddingProvider(EmbeddingProvider):
 
 
 def get_embedding_provider() -> EmbeddingProvider:
+    if settings.embedding_provider == "ollama":
+        return OllamaEmbeddingProvider()
     if settings.embedding_provider == "openai":
         return OpenAIEmbeddingProvider()
-    return OllamaEmbeddingProvider()
+    raise ValueError(
+        f"Unknown embedding provider {settings.embedding_provider!r}. "
+        "Set UAM_EMBEDDING_PROVIDER to 'ollama' or 'openai'."
+    )
