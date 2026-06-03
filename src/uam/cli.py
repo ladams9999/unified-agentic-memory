@@ -223,6 +223,7 @@ def install_hooks(
     dest.write_text(content, encoding="utf-8")
     typer.echo(f"Installed: {dest}")
 
+
 def main() -> None:
     try:
         app()

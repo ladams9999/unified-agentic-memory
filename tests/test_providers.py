@@ -4,8 +4,6 @@ from __future__ import annotations
 import pytest
 from unittest.mock import MagicMock, patch
 
-import pytest
-
 from uam import embeddings as emb_module
 from uam import llm as llm_module
 from uam.embeddings import (
