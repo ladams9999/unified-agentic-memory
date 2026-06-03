@@ -2,15 +2,37 @@
 
 Unified Agentic Memory (UAM) is a local-first memory layer for multiple coding harnesses. It stores hook events relationally in Postgres, projects them into Apache AGE, indexes event and memory content for hybrid search, and runs a dream phase that turns recent activity into durable semantic memory files.
 
+## Platform support
+
+| Harness | Windows | macOS | Linux |
+|---|---|---|---|
+| GitHub Copilot CLI | Tested | Expected | Expected |
+| Claude Code | Tested | Expected | Expected |
+| Codex | Expected | Expected | Expected |
+| Warp | Expected | Expected | Expected |
+
+"Tested" means the full hook flow has been validated end-to-end on that platform.
+"Expected" means the code is written to be platform-neutral and should work, but has not yet been validated.
+
 ## Setup
 
-1. Install `uv`, Docker Desktop, and Node.js.
-2. Copy `db_stack/.env.example` to `db_stack/.env` and adjust credentials if needed.
-3. Build and start the database stack from `db_stack/`.
-4. Run `uv sync --dev`.
-5. Apply schema migrations with `uv run uam migrate`.
-6. Start the API with `uv run uvicorn uam.api:app --reload`.
-7. Start the frontend with `cd frontend && npm install && npm run dev`.
+### Prerequisites
+
+Install `uv` (the Python package manager used throughout):
+
+- **macOS / Linux** — `curl -Ls https://astral.sh/uv/install.sh | sh` or `brew install uv`
+- **Windows** — `winget install --id=astral-sh.uv` or `powershell -ExecutionPolicy ByPass -c "irm https://astral.sh/uv/install.ps1 | iex"`
+
+Also install Docker Desktop and Node.js.
+
+### Steps
+
+1. Copy `db_stack/.env.example` to `db_stack/.env` and adjust credentials if needed.
+2. Build and start the database stack from `db_stack/`.
+3. Run `uv sync --dev`.
+4. Apply schema migrations with `uv run uam migrate`.
+5. Start the API with `uv run uvicorn uam.api:app --reload`.
+6. Start the frontend with `cd frontend && npm install && npm run dev`.
 
 Python is pinned to `>=3.13`. UUID7 generation comes from the `uuid6` package (`uuid6.uuid7()`), which avoids relying on Python 3.14-only stdlib support.
 
@@ -93,6 +115,39 @@ The Vite React frontend provides:
 - stats cards for event, memory, and dream counts
 
 Set `VITE_API_BASE` if the API is not running at `http://127.0.0.1:8000`.
+
+## Installing hooks with `uam install-hooks`
+
+UAM ships a CLI command that reads the correct template for your harness, substitutes the UAM project root, and writes the hook configuration to the right place in any project directory.
+
+```
+uam install-hooks --client <harness> --target-dir <path/to/project>
+```
+
+| `--client` | File written into `--target-dir` |
+|---|---|
+| `copilot` | `.github/hooks/uam-memory.json` |
+| `claude-code` | `.claude/settings.json` |
+| `codex` | `.codex/hooks.json` |
+
+The command is idempotent: if the destination file already exists and its content is identical to what would be written, it prints "already up to date" and exits without touching the file. If the file exists with *different* content it prints a warning and exits non-zero so you can merge manually — this is intentional for `.claude/settings.json`, which often contains other per-project settings.
+
+### Examples
+
+```bash
+# Install Copilot hooks into ~/projects/my-app
+uv run uam install-hooks --client copilot --target-dir ~/projects/my-app
+
+# Install Claude Code hooks into the current directory
+uv run uam install-hooks --client claude-code --target-dir .
+
+# Install Codex hooks on Windows
+uv run uam install-hooks --client codex --target-dir "C:\Users\me\projects\my-app"
+```
+
+After running the command, restart the harness in the target project. The path inside the generated file always uses forward slashes so it works correctly on macOS and Linux; `uv` on Windows also accepts forward-slash paths.
+
+---
 
 ## Installing in Claude Code
 

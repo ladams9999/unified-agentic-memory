@@ -23,6 +23,17 @@ def _pick(payload: dict[str, Any], *keys: str) -> Any:
     return None
 
 
+def _normalize_path(value: Any) -> Any:
+    """Return *value* with backslashes replaced by forward slashes.
+
+    Only acts on strings; passes anything else through unchanged so the
+    function is safe to call on arbitrary payload fields.
+    """
+    if isinstance(value, str):
+        return value.replace("\\", "/")
+    return value
+
+
 def _normalize_event_name(value: Any) -> str:
     if not isinstance(value, str) or not value:
         return "unknown"
@@ -81,7 +92,7 @@ def normalize_payload(client: str, payload: dict[str, Any]) -> HookEvent:
         tool_name=_pick(tool, "name", "tool_name", "toolName"),
         tool_input=_pick(tool, "input", "arguments", "payload", "tool_input", "toolArgs"),
         user_prompt=_pick(payload, "user_prompt", "userPrompt", "prompt"),
-        cwd=_pick(payload, "cwd", "workspace", "workingDirectory"),
+        cwd=_normalize_path(_pick(payload, "cwd", "workspace", "workingDirectory")),
         raw_payload=payload,
         occurred_at=_parse_occurred_at(occurred_at),
     )

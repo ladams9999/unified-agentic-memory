@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 import subprocess
 from pathlib import Path
+from typing import Annotated
 
 import typer
 
@@ -99,6 +100,100 @@ def search(query: str, scope: str = "all", limit: int = 5) -> None:
 def dream(dry_run: bool = False) -> None:
     _ensure_db_stack_running()
     typer.echo(run_dream(dry_run=dry_run).model_dump_json(indent=2))
+
+
+# Maps each client to:
+#   template_path  — relative path inside hooks/<client>/
+#   dest_path      — where the file is written inside --target-dir
+_HOOK_INSTALL_MAP: dict[str, dict[str, str]] = {
+    "copilot": {
+        "template": "hooks/copilot/hooks.json",
+        "dest": ".github/hooks/uam-memory.json",
+    },
+    "claude-code": {
+        "template": "hooks/claude-code/settings.json",
+        "dest": ".claude/settings.json",
+    },
+    "codex": {
+        "template": "hooks/codex/hooks.json",
+        "dest": ".codex/hooks.json",
+    },
+}
+
+
+@app.command("install-hooks")
+def install_hooks(
+    client: Annotated[
+        str,
+        typer.Option(
+            "--client",
+            help="Harness to install hooks for: copilot, claude-code, or codex.",
+        ),
+    ],
+    target_dir: Annotated[
+        Path,
+        typer.Option(
+            "--target-dir",
+            help="Root of the project where hooks should be installed.",
+            exists=True,
+            file_okay=False,
+            dir_okay=True,
+            resolve_path=True,
+        ),
+    ],
+) -> None:
+    """Install UAM hook configuration into a target project directory.
+
+    Reads the template from hooks/<client>/ inside the UAM repository,
+    substitutes the UAM project root for the <UAM_PROJECT_DIR> placeholder,
+    and writes the result to the correct location inside --target-dir.
+
+    The command is idempotent: if the destination file already exists and its
+    content matches what would be written, it reports 'already up to date' and
+    exits without modifying the file.  If the content differs it warns the user
+    and exits without overwriting, so that manual merges (e.g. for
+    .claude/settings.json) are never silently lost.
+    """
+    if client not in _HOOK_INSTALL_MAP:
+        typer.echo(
+            f"Unknown client '{client}'. Choose from: {', '.join(_HOOK_INSTALL_MAP)}",
+            err=True,
+        )
+        raise typer.Exit(code=1)
+
+    spec = _HOOK_INSTALL_MAP[client]
+    uam_root = project_root()
+    template_path = uam_root / spec["template"]
+
+    if not template_path.exists():
+        typer.echo(f"Template not found: {template_path}", err=True)
+        raise typer.Exit(code=1)
+
+    raw = template_path.read_text(encoding="utf-8")
+    # Normalise the UAM root to forward slashes so the substituted path is
+    # portable on all platforms (the uv --directory flag accepts both on
+    # Windows, and forward slashes are required on macOS/Linux).
+    uam_root_str = uam_root.as_posix()
+    content = raw.replace("<UAM_PROJECT_DIR>", uam_root_str)
+
+    dest = target_dir / spec["dest"]
+
+    if dest.exists():
+        existing = dest.read_text(encoding="utf-8")
+        if existing == content:
+            typer.echo(f"Already up to date: {dest}")
+            return
+        typer.echo(
+            f"WARNING: {dest} already exists with different content.\n"
+            "Refusing to overwrite automatically to avoid losing manual edits.\n"
+            f"Review the template at {template_path} and merge changes by hand.",
+            err=True,
+        )
+        raise typer.Exit(code=1)
+
+    dest.parent.mkdir(parents=True, exist_ok=True)
+    dest.write_text(content, encoding="utf-8")
+    typer.echo(f"Installed: {dest}")
 
 
 def main() -> None:
