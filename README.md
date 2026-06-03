@@ -52,8 +52,8 @@ UAM will detect that AGE is not installed and skip the AGE migration (`0003_age_
 
 ### Feature notes
 
-- **Unavailable:** graph traversal (Session/Event graph nodes, `NEXT_EVENT` chains) and the session timeline browser in the frontend. The timeline panel will show an empty list.
-- **Available:** event logging, semantic memory CRUD, hybrid search (vector + full-text), the dream phase, the MCP server, and all CLI and API commands.
+- **Unavailable:** graph traversal (Session/Event graph nodes, `NEXT_EVENT` chains). Graph projection calls become no-ops.
+- **Available:** event logging, semantic memory CRUD, hybrid search (vector + full-text), the dream phase, the MCP server, the session timeline browser (backed by relational events, not AGE), and all CLI and API commands.
 
 ## Usage
 

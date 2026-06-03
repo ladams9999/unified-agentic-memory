@@ -26,7 +26,7 @@ class Settings(BaseSettings):
     search_cache_ttl_seconds: int = 900
     hook_metrics_window: int = 200
     local_log_dir: Path = Path("logs")
-    db_sslmode: str = "prefer"  # "disable" | "require" | "verify-ca" | "verify-full"
+    db_sslmode: str = "prefer"  # "disable" | "allow" | "prefer" | "require" | "verify-ca" | "verify-full"
     disable_graph: bool = False  # set True for Supabase or any AGE-less Postgres
 
     @computed_field

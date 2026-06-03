@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import sys
 from collections.abc import Iterator
 from contextlib import contextmanager
 from pathlib import Path
@@ -106,7 +107,8 @@ def apply_migrations(conn: Any, directory: Path | None = None) -> list[str]:
             if not is_age_available(conn):
                 print(
                     f"WARNING: Skipping AGE migration {path.name!r} — "
-                    "Apache AGE extension is not installed in this database."
+                    "Apache AGE extension is not installed in this database.",
+                    file=sys.stderr,
                 )
                 continue
         conn.execute(path.read_text(encoding="utf-8"))
