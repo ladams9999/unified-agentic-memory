@@ -26,13 +26,16 @@ class Settings(BaseSettings):
     search_cache_ttl_seconds: int = 900
     hook_metrics_window: int = 200
     local_log_dir: Path = Path("logs")
+    db_sslmode: str = "prefer"  # "disable" | "require" | "verify-ca" | "verify-full"
+    disable_graph: bool = False  # set True for Supabase or any AGE-less Postgres
 
     @computed_field
     @property
     def database_url(self) -> str:
         return (
             f"host={self.db_host} port={self.db_port} "
-            f"dbname={self.db_name} user={self.db_user} password={self.db_password}"
+            f"dbname={self.db_name} user={self.db_user} password={self.db_password} "
+            f"sslmode={self.db_sslmode}"
         )
 
     @computed_field
@@ -40,7 +43,8 @@ class Settings(BaseSettings):
     def postgres_database_url(self) -> str:
         return (
             f"host={self.db_host} port={self.db_port} "
-            f"dbname=postgres user={self.db_user} password={self.db_password}"
+            f"dbname=postgres user={self.db_user} password={self.db_password} "
+            f"sslmode={self.db_sslmode}"
         )
 
 

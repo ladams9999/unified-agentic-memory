@@ -2,10 +2,13 @@ from __future__ import annotations
 
 from typing import Any
 
+from .config import settings
 from .graph import create_event, create_session, delete_memory_node, link_event, upsert_memory_node
 
 
 def project_event(conn: Any, event_row: dict[str, Any]) -> None:
+    if settings.disable_graph:
+        return
     session_id = event_row["session_id"]
     event_id = event_row["id"]
     create_session(conn, session_id, event_row["client"])
@@ -24,14 +27,20 @@ def project_event(conn: Any, event_row: dict[str, Any]) -> None:
 
 
 def project_memory(conn: Any, memory: Any) -> None:
+    if settings.disable_graph:
+        return
     upsert_memory_node(conn, memory.id, memory.path)
 
 
 def remove_memory_projection(conn: Any, path: str) -> None:
+    if settings.disable_graph:
+        return
     delete_memory_node(conn, path)
 
 
 def replay_relational_memories(conn: Any) -> int:
+    if settings.disable_graph:
+        return 0
     from .models import Memory, MemoryType
 
     rows = conn.execute(
@@ -55,6 +64,8 @@ def replay_relational_memories(conn: Any) -> int:
 
 
 def replay_relational_events(conn: Any) -> int:
+    if settings.disable_graph:
+        return 0
     rows = conn.execute(
         """
         SELECT id, session_id, client, event_name, occurred_at

@@ -4,6 +4,15 @@ The items below were completed and verified in this implementation pass.
 
 ---
 
+## Goal 3: Remote Postgres / Supabase Support
+
+- [x] **G3-1** — Added `db_sslmode: str = "prefer"` and `disable_graph: bool = False` to `Settings` in `src/uam/config.py`; both `database_url` and `postgres_database_url` now append `sslmode={db_sslmode}`; updated `db_stack/.env.example` with new vars and comments.
+- [x] **G3-2** — Added `is_age_available(conn) -> bool` (queries `pg_extension`) and `try_ensure_age(conn) -> bool` (wraps `ensure_age` in try/except) to `src/uam/db.py`; existing `ensure_age()` unchanged.
+- [x] **G3-3** — All five public AGE-writing functions in `src/uam/projection.py` (`project_event`, `project_memory`, `remove_memory_projection`, `replay_relational_memories`, `replay_relational_events`) guard with `if settings.disable_graph: return` matching their return type (None / 0).
+- [x] **G3-4** — Extracted AGE graph creation DDL from `0001_initial_schema.sql` into new `db_stack/migrations/0003_age_graph.sql`; `apply_migrations()` in `src/uam/db.py` now calls `is_age_available()` before applying any `*_age.sql` or `0003_age_graph.sql` file and prints a warning and skips when AGE is absent.
+- [x] **G3-5** — Added `tests/test_graph_disabled.py` (13 tests): `is_age_available` with fake connections returning 0/1; `project_event`, `project_memory`, `remove_memory_projection`, `replay_relational_memories`, `replay_relational_events` short-circuit correctly with `disable_graph=True` (Cypher helpers not called); `apply_migrations` skips AGE file when AGE absent, applies when present; `_is_age_migration` helper tests. All 28 tests pass.
+- [x] **G3-6** — Added "## Using Supabase" section to `README.md` covering pgvector enablement, required env vars, `uam migrate` behaviour, and feature availability notes.
+
 ## Phase 0: Fixes & Project Init
 
 - [x] **P0-1** Remove `timescaledb` from `shared_preload_libraries` in `db_stack/Dockerfile_pguam18.4`; keep only `pg_cron`.

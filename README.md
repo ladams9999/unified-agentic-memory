@@ -14,6 +14,47 @@ Unified Agentic Memory (UAM) is a local-first memory layer for multiple coding h
 
 Python is pinned to `>=3.13`. UUID7 generation comes from the `uuid6` package (`uuid6.uuid7()`), which avoids relying on Python 3.14-only stdlib support.
 
+## Using Supabase
+
+Supabase provides a managed Postgres with pgvector but without Apache AGE. UAM supports this configuration: graph projection is disabled and all other features work normally.
+
+### Enable pgvector
+
+In the Supabase dashboard SQL editor:
+
+```sql
+CREATE EXTENSION IF NOT EXISTS vector;
+```
+
+### Configure environment variables
+
+Set the following in `.env` (or export them directly):
+
+```env
+UAM_DB_HOST=<your-project>.supabase.co
+UAM_DB_PORT=5432
+UAM_DB_USER=postgres
+UAM_DB_PASSWORD=<your-database-password>
+UAM_DB_NAME=postgres
+UAM_DB_SSLMODE=require
+UAM_DISABLE_GRAPH=true
+```
+
+Replace `<your-project>` with your Supabase project reference and `<your-database-password>` with the password from the Supabase dashboard under **Settings → Database**.
+
+### Apply migrations
+
+```bash
+uv run uam migrate
+```
+
+UAM will detect that AGE is not installed and skip the AGE migration (`0003_age_graph.sql`), printing a warning. All other migrations apply normally.
+
+### Feature notes
+
+- **Unavailable:** graph traversal (Session/Event graph nodes, `NEXT_EVENT` chains) and the session timeline browser in the frontend. The timeline panel will show an empty list.
+- **Available:** event logging, semantic memory CRUD, hybrid search (vector + full-text), the dream phase, the MCP server, and all CLI and API commands.
+
 ## Usage
 
 ### CLI

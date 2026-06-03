@@ -55,9 +55,31 @@ def get_connection(existing: Any | None = None) -> Iterator[Any]:
         yield conn
 
 
+def is_age_available(conn: Any) -> bool:
+    """Return True if the Apache AGE extension is installed in the current database."""
+    row = conn.execute(
+        "SELECT COUNT(*) FROM pg_extension WHERE extname = 'age'"
+    ).fetchone()
+    return row[0] > 0
+
+
 def ensure_age(conn: Any) -> None:
     conn.execute("LOAD 'age'")
     conn.execute('SET search_path = ag_catalog, "$user", public')
+
+
+def try_ensure_age(conn: Any) -> bool:
+    """Call ensure_age and return True on success, False on any failure."""
+    try:
+        ensure_age(conn)
+        return True
+    except Exception:
+        return False
+
+
+def _is_age_migration(filename: str) -> bool:
+    """Return True if the migration file is AGE-specific and should be skipped when AGE is absent."""
+    return filename.endswith("_age.sql") or filename == "0003_age_graph.sql"
 
 
 def apply_migrations(conn: Any, directory: Path | None = None) -> list[str]:
@@ -80,6 +102,13 @@ def apply_migrations(conn: Any, directory: Path | None = None) -> list[str]:
     for path in sorted((directory or migrations_dir()).glob("*.sql")):
         if path.name in applied:
             continue
+        if _is_age_migration(path.name):
+            if not is_age_available(conn):
+                print(
+                    f"WARNING: Skipping AGE migration {path.name!r} — "
+                    "Apache AGE extension is not installed in this database."
+                )
+                continue
         conn.execute(path.read_text(encoding="utf-8"))
         conn.execute(
             "INSERT INTO uam.schema_migrations (filename) VALUES (%s)",
