@@ -9,7 +9,9 @@ import typer
 
 from .db import apply_migrations, close_pool, get_connection, project_root
 from .dream import run_dream
+from .embeddings import get_embedding_provider
 from .events import list_session_summaries
+from .llm import get_llm_provider
 from .memories import confirm_idea, delete_memory, get_memory, list_memories, upsert_memory
 from .models import MemoryType
 from .projection import replay_relational_memories
@@ -102,6 +104,35 @@ def dream(dry_run: bool = False) -> None:
     typer.echo(run_dream(dry_run=dry_run).model_dump_json(indent=2))
 
 
+@app.command("check-providers")
+def check_providers() -> None:
+    """Test the configured embedding and LLM providers. Exits 0 on success, 1 on any failure."""
+    all_ok = True
+
+    # Test embedding provider
+    try:
+        embedder = get_embedding_provider()
+        provider_name = type(embedder).__name__
+        result = embedder.embed("test")
+        typer.echo(f"[OK] {provider_name}.embed() returned {len(result)}-dim vector")
+    except Exception as exc:  # noqa: BLE001
+        typer.echo(f"[FAIL] embedding provider: {exc}")
+        all_ok = False
+
+    # Test LLM provider
+    try:
+        llm = get_llm_provider()
+        provider_name = type(llm).__name__
+        response = llm.generate("Say hello.", "You are a test.")
+        typer.echo(f"[OK] {provider_name}.generate() => {response[:50]!r}")
+    except Exception as exc:  # noqa: BLE001
+        typer.echo(f"[FAIL] LLM provider: {exc}")
+        all_ok = False
+
+    if not all_ok:
+        raise typer.Exit(code=1)
+
+
 # Maps each client to:
 #   template_path  — relative path inside hooks/<client>/
 #   dest_path      — where the file is written inside --target-dir
@@ -170,9 +201,6 @@ def install_hooks(
         raise typer.Exit(code=1)
 
     raw = template_path.read_text(encoding="utf-8")
-    # Normalise the UAM root to forward slashes so the substituted path is
-    # portable on all platforms (the uv --directory flag accepts both on
-    # Windows, and forward slashes are required on macOS/Linux).
     uam_root_str = uam_root.as_posix()
     content = raw.replace("<UAM_PROJECT_DIR>", uam_root_str)
 
@@ -194,7 +222,6 @@ def install_hooks(
     dest.parent.mkdir(parents=True, exist_ok=True)
     dest.write_text(content, encoding="utf-8")
     typer.echo(f"Installed: {dest}")
-
 
 def main() -> None:
     try:

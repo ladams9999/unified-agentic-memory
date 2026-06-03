@@ -23,6 +23,15 @@ class Settings(BaseSettings):
     embedding_model: str = "nomic-embed-text"
     llm_model: str = "mistral"
     llm_timeout_seconds: int = 300
+    embedding_provider: str = "ollama"  # "ollama" | "openai"
+    llm_provider: str = "ollama"  # "ollama" | "openai" | "openrouter"
+    openai_api_key: str = ""
+    openai_embedding_model: str = "text-embedding-3-small"
+    openai_llm_model: str = "gpt-4o-mini"
+    openai_base_url: str = "https://api.openai.com/v1"
+    openrouter_api_key: str = ""
+    openrouter_base_url: str = "https://openrouter.ai/api/v1"
+    openrouter_llm_model: str = "mistralai/mistral-7b-instruct"
     search_cache_ttl_seconds: int = 900
     hook_metrics_window: int = 200
     local_log_dir: Path = Path("logs")

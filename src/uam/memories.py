@@ -5,7 +5,7 @@ from typing import Any
 from psycopg.types.json import Jsonb
 
 from .db import get_connection
-from .embeddings import EmbeddingProvider, OllamaEmbeddingProvider
+from .embeddings import EmbeddingProvider, get_embedding_provider
 from .models import Memory, MemoryType
 from .projection import project_memory, remove_memory_projection
 from .uuids import uuid7
@@ -46,7 +46,7 @@ def upsert_memory(
         ).fetchone()
         if existing and existing[4] == MemoryType.fact.value:
             raise ValueError(f"Cannot overwrite fact memory at path '{path}'")
-        provider = embedder or OllamaEmbeddingProvider()
+        provider = embedder or get_embedding_provider()
         embedding = existing[5] if existing and existing[3] == content else provider.embed(content)
         memory_id = existing[0] if existing else uuid7()
 

@@ -18,14 +18,15 @@ UAM is a local-first shared memory layer for multiple coding harnesses (Claude C
 Harness hooks → uam.hooks.handler → uam.events.log_event
                                         ├── uam.events       (Postgres relational, append-only)
                                         ├── Apache AGE graph (projected from relational rows)
-                                        └── uam.embeddings   (pgvector via Ollama nomic-embed-text)
+                                        └── uam.embeddings   (pgvector; provider: Ollama | OpenAI)
 
 CLI / API / MCP / Hook injector → uam.search.hybrid_search
                                         ├── vector search    (pgvector HNSW)
                                         ├── full-text search (GIN tsvector)
                                         └── uam.search_cache (TTL cache, cleared on dream)
 
-Dream phase → uam.dream.run_dream → Ollama LLM → memory blocks → uam.memories.upsert_memory
+Dream phase → uam.dream.run_dream → LLM provider → memory blocks → uam.memories.upsert_memory
+                                        (provider: Ollama | OpenAI | OpenRouter)
 ```
 
 Hook handlers are deterministic and model-free. They always exit `0`; a dead database never blocks a session.
@@ -35,7 +36,7 @@ Hook handlers are deterministic and model-free. They always exit `0`; a dead dat
 | Path | Purpose |
 |---|---|
 | `src/uam/models.py` | Pydantic models: events, memories, search results, dream runs |
-| `src/uam/config.py` | `pydantic-settings` env-backed settings |
+| `src/uam/config.py` | `pydantic-settings` env-backed settings; provider selection via `UAM_EMBEDDING_PROVIDER` / `UAM_LLM_PROVIDER` |
 | `src/uam/db.py` | psycopg pool, AGE setup, migration runner |
 | `src/uam/events.py` | Append-only relational ingest + AGE projection + embedding |
 | `src/uam/graph.py` | Apache AGE Cypher helpers |
@@ -71,7 +72,7 @@ AGE graph `uam`: vertices `Session`, `Event`, `Memory`; edges `HAS_EVENT`, `NEXT
 
 ## Running the stack
 
-Prerequisites: `uv`, Docker Desktop, Node.js, Ollama with `nomic-embed-text` pulled.
+Prerequisites: `uv`, Docker Desktop, Node.js, Ollama with `nomic-embed-text` pulled (or set `UAM_EMBEDDING_PROVIDER=openai` / `UAM_LLM_PROVIDER=openai|openrouter` and provide API keys).
 
 ```bash
 # 1. Start the database
@@ -107,7 +108,7 @@ Injection contract:
 
 ## Dream phase
 
-`uv run uam dream` reads events since the last watermark, sends them with current memories to the configured Ollama model, parses fenced ` ```memory path.md ``` ` blocks, upserts memories, and clears search cache. `--dry-run` skips writes. Scheduling via `pg_cron` is installed but deferred in v1.
+`uv run uam dream` reads events since the last watermark, sends them with current memories to the configured LLM (Ollama by default; set `UAM_LLM_PROVIDER=openai|openrouter`), parses fenced ` ```memory path.md ``` ` blocks, upserts memories, and clears search cache. `--dry-run` skips writes. Scheduling via `pg_cron` is installed but deferred in v1. Use `uv run uam check-providers` to validate the configured providers.
 
 ## Testing
 

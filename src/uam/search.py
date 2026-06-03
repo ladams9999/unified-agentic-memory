@@ -8,7 +8,7 @@ from psycopg.types.json import Jsonb
 
 from .config import settings
 from .db import get_connection
-from .embeddings import EmbeddingProvider, OllamaEmbeddingProvider
+from .embeddings import EmbeddingProvider, get_embedding_provider
 from .models import SearchResult
 from .vectors import search_similar
 
@@ -152,7 +152,7 @@ def hybrid_search(
         if cached is not None:
             return cached[:limit]
 
-        provider = embedder or OllamaEmbeddingProvider()
+        provider = embedder or get_embedding_provider()
         vector_results = search_similar(active, provider.embed(query), limit, scope)
         fts_results = _full_text_search(active, query, scope, limit)
         merged = reciprocal_rank_fusion(vector_results, fts_results)[:limit]

@@ -120,6 +120,15 @@ The items below were completed and verified in this implementation pass.
 - [x] **P1b-3** Validated psycopg pool connects to `uam_db` on PostgreSQL 18.4; `ensure_age()` sets `ag_catalog` in `search_path`.
 - [x] **P1b-5** Validated `nomic-embed-text` via `OllamaEmbeddingProvider` returns 768-dimension vectors.
 
+## Goal 2: Remote Model Support
+
+- [x] **G2-1** — Extended `Settings` in `config.py` with `embedding_provider`, `llm_provider`, OpenAI fields, and OpenRouter fields. Created root `.env.example` documenting all UAM env vars including the new provider settings.
+- [x] **G2-2** — Added `OpenAIEmbeddingProvider` to `embeddings.py` (POSTs to OpenAI `/embeddings` with `dimensions=768`); added `get_embedding_provider()` factory returning the right provider based on `settings.embedding_provider`.
+- [x] **G2-3** — Added `OpenAILLMProvider` and `OpenRouterLLMProvider` to `llm.py`; both use OpenAI chat completions format; OpenRouter adds `HTTP-Referer` header. Added `get_llm_provider()` factory.
+- [x] **G2-4** — Replaced all direct `OllamaEmbeddingProvider()` / `OllamaLLMProvider()` instantiation with factory calls in `events.py`, `memories.py`, `search.py`, and `dream.py`.
+- [x] **G2-5** — Added `uam check-providers` CLI command; tests both configured providers with a real embed/generate call and prints success/failure per provider. Exits 0 if all pass, 1 if any fail.
+- [x] **G2-6** — Added `tests/test_providers.py` with 14 unit tests covering `OpenAIEmbeddingProvider`, `OpenAILLMProvider`, `OpenRouterLLMProvider`, and both factory functions using mocked httpx responses. All 29 tests pass.
+
 ## Goal 1: Cross-Platform Harness Integration
 
 - [x] **G1-CP-4** Updated `README.md`: added platform support matrix table (Copilot/Claude Code/Codex/Warp x Windows/macOS/Linux), macOS/Linux `uv` installation prerequisites, and a new "Installing hooks with `uam install-hooks`" section with the destination table, idempotency explanation, and per-platform usage examples.
