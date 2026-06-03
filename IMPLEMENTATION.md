@@ -41,9 +41,8 @@ Dream phase -> uam.dream.run_dream -> LLM -> parsed memory blocks -> uam.memorie
   - `uam.dream_runs`: dream bookkeeping and watermarking
   - `uam.search_cache`: cached hybrid search results with TTL
   - `uam.schema_migrations`: applied migration tracking
-- `0002_memory_type.sql`
-  - Adds `memory_type TEXT NOT NULL DEFAULT 'learning' CHECK (memory_type IN ('fact', 'learning', 'idea'))` to `uam.memories`
-- `0003_age_graph.sql`
+- `0002_age_graph.sql`
+  - Creates the Apache AGE graph `uam`; skipped automatically by the migration runner when AGE is not installed (e.g. Supabase)
   - Creates the Apache AGE graph `uam`; skipped automatically by the migration runner when AGE is not installed (e.g. Supabase)
 
 Apache AGE graph `uam` uses labels:

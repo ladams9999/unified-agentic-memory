@@ -80,7 +80,7 @@ def try_ensure_age(conn: Any) -> bool:
 
 def _is_age_migration(filename: str) -> bool:
     """Return True if the migration file is AGE-specific and should be skipped when AGE is absent."""
-    return filename.endswith("_age.sql") or filename == "0003_age_graph.sql"
+    return filename.endswith("_age.sql") or filename == "0002_age_graph.sql"
 
 
 def apply_migrations(conn: Any, directory: Path | None = None) -> list[str]:

@@ -167,13 +167,13 @@ def test_apply_migrations_skips_age_file_when_age_unavailable(tmp_path: Path):
     """AGE migration file must be skipped (not executed, not recorded) when AGE is absent."""
     # Write a normal migration and an AGE migration
     (tmp_path / "0001_base.sql").write_text("SELECT 1;", encoding="utf-8")
-    (tmp_path / "0003_age_graph.sql").write_text("LOAD 'age';", encoding="utf-8")
+    (tmp_path / "0002_age_graph.sql").write_text("LOAD 'age';", encoding="utf-8")
 
     conn = _FakeMigrationConn(age_available=False)
     applied = apply_migrations(conn, directory=tmp_path)
 
     assert "0001_base.sql" in applied
-    assert "0003_age_graph.sql" not in applied
+    assert "0002_age_graph.sql" not in applied
     # The AGE SQL body must not appear in executed statements
     assert not any("LOAD 'age'" in s for s in conn.executed)
 
@@ -181,13 +181,13 @@ def test_apply_migrations_skips_age_file_when_age_unavailable(tmp_path: Path):
 def test_apply_migrations_applies_age_file_when_age_available(tmp_path: Path):
     """AGE migration file must be applied when AGE is present."""
     (tmp_path / "0001_base.sql").write_text("SELECT 1;", encoding="utf-8")
-    (tmp_path / "0003_age_graph.sql").write_text("LOAD 'age';", encoding="utf-8")
+    (tmp_path / "0002_age_graph.sql").write_text("LOAD 'age';", encoding="utf-8")
 
     conn = _FakeMigrationConn(age_available=True)
     applied = apply_migrations(conn, directory=tmp_path)
 
     assert "0001_base.sql" in applied
-    assert "0003_age_graph.sql" in applied
+    assert "0002_age_graph.sql" in applied
 
 
 def test_apply_migrations_skips_custom_age_sql_file(tmp_path: Path):
@@ -206,7 +206,7 @@ def test_apply_migrations_skips_custom_age_sql_file(tmp_path: Path):
 
 
 def test_is_age_migration_identifies_canonical_file():
-    assert _is_age_migration("0003_age_graph.sql") is True
+    assert _is_age_migration("0002_age_graph.sql") is True
 
 
 def test_is_age_migration_identifies_suffix_pattern():
@@ -215,4 +215,3 @@ def test_is_age_migration_identifies_suffix_pattern():
 
 def test_is_age_migration_returns_false_for_regular_files():
     assert _is_age_migration("0001_initial_schema.sql") is False
-    assert _is_age_migration("0002_memory_type.sql") is False
