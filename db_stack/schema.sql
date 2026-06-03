@@ -6,7 +6,7 @@ BEGIN
     IF NOT EXISTS (SELECT 1 FROM ag_catalog.ag_graph WHERE name = 'uam') THEN
         PERFORM ag_catalog.create_graph('uam');
     END IF;
-END
+END;
 $$;
 
 CREATE TABLE IF NOT EXISTS uam.schema_migrations (
@@ -37,6 +37,8 @@ CREATE TABLE IF NOT EXISTS uam.memories (
     path TEXT UNIQUE NOT NULL,
     frontmatter JSONB NOT NULL DEFAULT '{}'::jsonb,
     content TEXT NOT NULL,
+    memory_type TEXT NOT NULL DEFAULT 'learning'
+        CHECK (memory_type IN ('fact', 'learning', 'idea')),
     embedding vector(768),
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
