@@ -5,7 +5,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "uv run --directory \"<UAM_PROJECT_DIR>\" python -m uam.hooks.handler --client claude-code"
+            "command": "uv run --directory \"<UAM_PROJECT_DIR>\" python -m uam.hooks.handler --client claude-code<UAM_PROFILE_ARGS>"
           }
         ]
       }
@@ -15,7 +15,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "uv run --directory \"<UAM_PROJECT_DIR>\" python -m uam.hooks.handler --client claude-code"
+            "command": "uv run --directory \"<UAM_PROJECT_DIR>\" python -m uam.hooks.handler --client claude-code<UAM_PROFILE_ARGS>"
           }
         ]
       }
@@ -25,7 +25,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "uv run --directory \"<UAM_PROJECT_DIR>\" python -m uam.hooks.handler --client claude-code"
+            "command": "uv run --directory \"<UAM_PROJECT_DIR>\" python -m uam.hooks.handler --client claude-code<UAM_PROFILE_ARGS>"
           }
         ]
       }
@@ -35,7 +35,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "uv run --directory \"<UAM_PROJECT_DIR>\" python -m uam.hooks.handler --client claude-code"
+            "command": "uv run --directory \"<UAM_PROJECT_DIR>\" python -m uam.hooks.handler --client claude-code<UAM_PROFILE_ARGS>"
           }
         ]
       }
@@ -45,7 +45,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "uv run --directory \"<UAM_PROJECT_DIR>\" python -m uam.hooks.handler --client claude-code"
+            "command": "uv run --directory \"<UAM_PROJECT_DIR>\" python -m uam.hooks.handler --client claude-code<UAM_PROFILE_ARGS>"
           }
         ]
       }
@@ -55,7 +55,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "uv run --directory \"<UAM_PROJECT_DIR>\" python -m uam.hooks.handler --client claude-code"
+            "command": "uv run --directory \"<UAM_PROJECT_DIR>\" python -m uam.hooks.handler --client claude-code<UAM_PROFILE_ARGS>"
           }
         ]
       }

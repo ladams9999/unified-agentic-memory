@@ -119,3 +119,46 @@ def test_install_hooks_substitutes_uam_root_forward_slashes(tmp_path, monkeypatc
     dest = target / ".codex" / "hooks.json"
     written = dest.read_text(encoding="utf-8")
     assert "\\" not in written
+
+
+def test_install_hooks_includes_profile_argument(tmp_path, monkeypatch):
+    uam_root = _make_uam_hooks(
+        tmp_path,
+        "claude-code",
+        '{"command": "uv run --directory \\"<UAM_PROJECT_DIR>\\" python -m uam.hooks.handler --client claude-code<UAM_PROFILE_ARGS>"}',
+    )
+    target = _target(tmp_path)
+    monkeypatch.setattr("uam.cli.project_root", lambda: uam_root)
+
+    result = runner.invoke(
+        app,
+        ["install-hooks", "--client", "claude-code", "--target-dir", str(target), "--profile", "focus"],
+    )
+
+    assert result.exit_code == 0, result.output
+    written = (target / ".claude" / "settings.json").read_text(encoding="utf-8")
+    assert "--profile focus" in written
+
+
+def test_profiles_command_lists_implicit_default(tmp_path, monkeypatch):
+    monkeypatch.setattr("uam.profiles.settings.profiles_path", tmp_path / "missing.json")
+
+    result = runner.invoke(app, ["profiles"])
+
+    assert result.exit_code == 0, result.output
+    assert '"default_profile": "default"' in result.output
+
+
+def test_save_profile_and_set_default_commands(tmp_path, monkeypatch):
+    registry_path = tmp_path / "uam-profiles.json"
+    monkeypatch.setattr("uam.profiles.settings.profiles_path", registry_path)
+
+    save_result = runner.invoke(
+        app,
+        ["save-profile", "focus", "--memory-prefix", "profiles/focus", "--description", "Focused context"],
+    )
+    set_result = runner.invoke(app, ["set-default-profile", "focus"])
+
+    assert save_result.exit_code == 0, save_result.output
+    assert set_result.exit_code == 0, set_result.output
+    assert '"name":"focus"' in set_result.output.replace(" ", "")

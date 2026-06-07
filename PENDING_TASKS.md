@@ -4,7 +4,6 @@
 
 ## Active implementation: setup profiles and offline event storage
 
-- [ ] **SP1** — Add named runtime profiles with explicit selection, default fallback, and profile-scoped memory prefixes/config resolution for hooks and CLI surfaces.
 - [ ] **SP2** — Add a durable local event queue so hook handlers append normalized events before any heavier processing and preserve events when profile/database work fails.
 - [ ] **SP3** — Split hook ingestion into capture and asynchronous processing, including replay/flush commands and retry-safe queued processing through the existing relational ingest path.
 - [ ] **SP4** — Add cached hook responses that can be served immediately and refreshed after queued events are processed.

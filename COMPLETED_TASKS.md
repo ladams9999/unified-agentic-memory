@@ -6,7 +6,7 @@ The items below were completed and verified in this implementation pass.
 
 ## Active implementation: setup profiles and offline event storage
 
-No tasks completed yet in this implementation pass.
+- [x] **SP1** — Added named runtime profiles via `src/uam/profiles.py` with registry-backed listing, save/default commands, implicit fallback behavior, and profile-aware hook installation/injection through `src/uam/cli.py`, `src/uam/hooks/handler.py`, and `src/uam/hooks/injector.py`. Added unit coverage in `tests/test_profiles.py`, `tests/test_cli.py`, and `tests/test_hooks.py`.
 
 ## Goal 3: Remote Postgres / Supabase Support
 

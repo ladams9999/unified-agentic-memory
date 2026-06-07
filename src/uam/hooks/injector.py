@@ -13,6 +13,7 @@ core retrieval logic.
 
 from ..memories import list_memories
 from ..models import SearchResult
+from ..profiles import resolve_profile
 from ..search import hybrid_search
 
 
@@ -20,12 +21,14 @@ def _render_results(results: list[SearchResult]) -> str:
     return "\n\n".join(f"- {result.title}\n{result.content}" for result in results)
 
 
-def session_start_payload(client: str, profile_prefix: str = "profiles/") -> dict[str, str]:
-    memories = list_memories(profile_prefix)
+def session_start_payload(client: str, profile_name: str | None = None) -> dict[str, str]:
+    profile = resolve_profile(profile_name)
+    memories = list_memories(profile.memory_prefix)
     content = "\n\n".join(f"- {memory.path}\n{memory.content}" for memory in memories)
     return {"system": content or "No stored profile memories."}
 
 
-def user_prompt_payload(client: str, query: str, limit: int = 5) -> dict[str, str]:
+def user_prompt_payload(client: str, query: str, limit: int = 5, profile_name: str | None = None) -> dict[str, str]:
+    resolve_profile(profile_name)
     results = hybrid_search(query, scope="all", limit=limit)
     return {"userPrompt": _render_results(results) or "No relevant memories found."}

@@ -17,6 +17,7 @@ def utc_now() -> datetime:
 class HookEvent(BaseModel):
     id: UUID | None = None
     session_id: UUID | None = None
+    profile_name: str | None = None
     client: str
     agent_name: str | None = None
     model_name: str | None = None
