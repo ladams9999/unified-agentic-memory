@@ -26,9 +26,16 @@ Build a single, shared memory layer for work across multiple coding agents: Clau
 - AGE DDL extracted from the base migration into `db_stack/migrations/0002_age_graph.sql`; the migration runner automatically skips it when AGE is not installed, printing a warning to stderr.
 - Supabase setup documented in README.
 
+### Goal 4 — Setup profiles and offline event storage ✓
+
+- Named runtime profiles added, with explicit hook selection, a default profile, and profile-scoped memory prefixes for injection.
+- Hook ingestion split into fast local capture plus asynchronous processing into Postgres, AGE, and pgvector.
+- Hook responses cached locally and refreshed after queued events are processed.
+- CLI support added for profile management and queue inspection/draining.
+
 ## Current Goals
 
-### Goal 4
+### Goal 5
 
 Prerequisites: Goals 2 and 3 (both complete).
 
@@ -83,7 +90,7 @@ Each hook will receive a JSON payload on stdin, which should include:
 
 Each hook can also emit JSON on stdout to inject additional context back into the conversation.
 
-Hooks should be deterministic and model-free. Initial latency targets are measurement-first: capture local timing metrics (p50/p95) and set strict budgets after observing real runs.
+Hooks should be deterministic and model-free. They should append normalized events to a local durable queue first, then let asynchronous processing update relational, graph, vector, and cached-response state. Initial latency targets remain measurement-first: capture local timing metrics (p50/p95) and set strict budgets after observing real runs.
 
 There will need to be skill sets for Claude Code, Codex, Github Copilot, and Warp.
 
@@ -95,13 +102,13 @@ UUID7 for event ID
 
 ### Relational event store (source of truth)
 
-All incoming hook events are stored in an append-only relational table with:
+All incoming hook events are first appended to a durable local queue, then processed into an append-only relational table with:
 
 - Raw payload JSONB (lossless copy of input)
 - Normalized query fields (session ID, client, agent/model, event name, tool details, prompt, cwd, timestamps)
 - Payload schema version for forward migrations
 
-This preserves all delivered information for future schema evolution and replay.
+This preserves all delivered information for future schema evolution and replay, while keeping hook-time latency low even when the selected profile or database is unavailable.
 
 ### Graph db
 
@@ -140,10 +147,11 @@ Besides receiving data from the hooks, a model can search for relevant memories,
 
 ## Summary
 
-- Hooks passively log every event to relational source-of-truth storage, without model calls.
+- Hooks passively capture every event to a durable local queue, without model calls.
+- Background processing moves queued events into relational source-of-truth storage.
 - Graph views are projected from relational events for traversal and relationship queries.
 - Dream Phase and Action Review read accumulated events, distilling them into durable markdown memories.  Memories are organized by topic, and merged rather than appended.
-- Injection on session start from any harness, profile memories are loaded into context. On user prompt, relevant memories are searched and appended automatically
+- Injection on session start from any harness loads profile memories into context. On user prompt, relevant memories are searched and appended automatically. Both responses can be served from cache and refreshed after queued event processing.
 
 ## Search
 

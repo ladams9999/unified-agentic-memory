@@ -10,11 +10,14 @@ import typer
 from .db import apply_migrations, close_pool, get_connection, project_root
 from .dream import run_dream
 from .embeddings import get_embedding_provider
+from .event_processor import process_queued_events
+from .event_queue import queue_status_counts
 from .events import list_session_summaries
 from .llm import get_llm_provider
 from .memories import confirm_idea, delete_memory, get_memory, list_memories, upsert_memory
 from .models import MemoryType
 from .projection import replay_relational_memories
+from .profiles import list_runtime_profiles, set_default_profile, upsert_profile
 from .search import hybrid_search
 
 app = typer.Typer(help="Unified agentic memory CLI")
@@ -88,6 +91,16 @@ def sessions(limit: int = 20) -> None:
     typer.echo(json.dumps(list_session_summaries(limit=limit), indent=2))
 
 
+@app.command("queue-status")
+def queue_status_command() -> None:
+    typer.echo(json.dumps(queue_status_counts(), indent=2))
+
+
+@app.command("process-events")
+def process_events_command(limit: int = 50, retry_failed: bool = False) -> None:
+    typer.echo(json.dumps(process_queued_events(limit=limit, retry_failed=retry_failed), indent=2))
+
+
 @app.command()
 def search(query: str, scope: str = "all", limit: int = 5) -> None:
     typer.echo(
@@ -152,6 +165,14 @@ _HOOK_INSTALL_MAP: dict[str, dict[str, str]] = {
 }
 
 
+def _profile_arg(profile: str | None) -> str:
+    if profile is None:
+        return ""
+    if any(char.isspace() for char in profile):
+        raise ValueError("Profile names used in hook commands cannot contain whitespace")
+    return f" --profile {profile}"
+
+
 @app.command("install-hooks")
 def install_hooks(
     client: Annotated[
@@ -172,6 +193,13 @@ def install_hooks(
             resolve_path=True,
         ),
     ],
+    profile: Annotated[
+        str | None,
+        typer.Option(
+            "--profile",
+            help="Optional runtime profile name passed through to the hook handler.",
+        ),
+    ] = None,
 ) -> None:
     """Install UAM hook configuration into a target project directory.
 
@@ -202,7 +230,12 @@ def install_hooks(
 
     raw = template_path.read_text(encoding="utf-8")
     uam_root_str = uam_root.as_posix()
-    content = raw.replace("<UAM_PROJECT_DIR>", uam_root_str)
+    try:
+        profile_arg = _profile_arg(profile)
+    except ValueError as exc:
+        typer.echo(str(exc), err=True)
+        raise typer.Exit(code=1) from exc
+    content = raw.replace("<UAM_PROJECT_DIR>", uam_root_str).replace("<UAM_PROFILE_ARGS>", profile_arg)
 
     dest = target_dir / spec["dest"]
 
@@ -222,6 +255,46 @@ def install_hooks(
     dest.parent.mkdir(parents=True, exist_ok=True)
     dest.write_text(content, encoding="utf-8")
     typer.echo(f"Installed: {dest}")
+
+
+@app.command("profiles")
+def profiles_command() -> None:
+    default_name, profiles = list_runtime_profiles()
+    typer.echo(
+        json.dumps(
+            {
+                "default_profile": default_name,
+                "profiles": [profile.model_dump(mode="json") for profile in profiles],
+            },
+            indent=2,
+        )
+    )
+
+
+@app.command("save-profile")
+def save_profile_command(
+    name: str,
+    memory_prefix: Annotated[
+        str,
+        typer.Option("--memory-prefix", help="Memory path prefix used for session-start profile injection."),
+    ] = "profiles/",
+    description: Annotated[
+        str | None,
+        typer.Option("--description", help="Optional human-readable description for the profile."),
+    ] = None,
+) -> None:
+    profile = upsert_profile(name, memory_prefix=memory_prefix, description=description)
+    typer.echo(profile.model_dump_json(indent=2))
+
+
+@app.command("set-default-profile")
+def set_default_profile_command(name: str) -> None:
+    try:
+        profile = set_default_profile(name)
+    except ValueError as exc:
+        typer.echo(str(exc), err=True)
+        raise typer.Exit(code=1) from exc
+    typer.echo(profile.model_dump_json(indent=2))
 
 
 def main() -> None:

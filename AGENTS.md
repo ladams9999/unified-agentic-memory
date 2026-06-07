@@ -15,21 +15,26 @@ UAM is a local-first shared memory layer for multiple coding harnesses (Claude C
 ## Architecture
 
 ```
-Harness hooks → uam.hooks.handler → uam.events.log_event
-                                        ├── uam.events       (Postgres relational, append-only)
-                                        ├── Apache AGE graph (projected from relational rows)
-                                        └── uam.embeddings   (pgvector; provider: Ollama | OpenAI)
+Harness hooks → uam.hooks.handler → uam.event_queue.enqueue_event
+                                        ├── local SQLite queue (`state/uam.sqlite3`)
+                                        └── background uam.event_processor.process_queued_events
+                                              ├── uam.events       (Postgres relational, append-only)
+                                              ├── Apache AGE graph (projected from relational rows)
+                                              └── uam.embeddings   (pgvector; provider: Ollama | OpenAI)
 
 CLI / API / MCP / Hook injector → uam.search.hybrid_search
                                         ├── vector search    (pgvector HNSW)
                                         ├── full-text search (GIN tsvector)
                                         └── uam.search_cache (TTL cache, cleared on dream)
 
+Hook injector → uam.response_cache
+                                        └── cached session-start / user-prompt payloads refreshed after queue processing
+
 Dream phase → uam.dream.run_dream → LLM provider → memory blocks → uam.memories.upsert_memory
                                         (provider: Ollama | OpenAI | OpenRouter)
 ```
 
-Hook handlers are deterministic and model-free. They always exit `0`; a dead database never blocks a session.
+Hook handlers are deterministic and model-free. They always exit `0`; they queue events locally first so a dead database never blocks a session.
 
 ## Key source files
 
@@ -37,11 +42,15 @@ Hook handlers are deterministic and model-free. They always exit `0`; a dead dat
 |---|---|
 | `src/uam/models.py` | Pydantic models: events, memories, search results, dream runs |
 | `src/uam/config.py` | `pydantic-settings` env-backed settings; provider selection via `UAM_EMBEDDING_PROVIDER` / `UAM_LLM_PROVIDER` |
+| `src/uam/profiles.py` | Named runtime profiles and default profile resolution |
 | `src/uam/db.py` | psycopg pool, AGE setup, migration runner |
+| `src/uam/event_queue.py` | Durable local queue for normalized hook events |
+| `src/uam/event_processor.py` | Async queue draining into relational ingest |
 | `src/uam/events.py` | Append-only relational ingest + AGE projection + embedding |
 | `src/uam/graph.py` | Apache AGE Cypher helpers |
 | `src/uam/projection.py` | Relational-to-graph projection and replay |
 | `src/uam/memories.py` | Semantic memory CRUD |
+| `src/uam/response_cache.py` | Local cached hook responses |
 | `src/uam/vectors.py` | Embedding persistence and similarity search |
 | `src/uam/search.py` | Hybrid search, RRF reranking, cache management |
 | `src/uam/dream.py` | Dream prompt, parsing, watermarking, cache invalidation |
@@ -49,7 +58,7 @@ Hook handlers are deterministic and model-free. They always exit `0`; a dead dat
 | `src/uam/hooks/injector.py` | Profile and search injection payloads |
 | `src/uam/api.py` | FastAPI service (9 endpoints) |
 | `src/uam/mcp_server.py` | FastMCP server (8 tools) |
-| `src/uam/cli.py` | Typer CLI (`search`, `store`, `get`, `delete`, `list`, `confirm-idea`, `sessions`, `dream`, `migrate`, `install-hooks`, `check-providers`) |
+| `src/uam/cli.py` | Typer CLI (`search`, `store`, `get`, `delete`, `list`, `confirm-idea`, `sessions`, `dream`, `migrate`, `install-hooks`, `profiles`, `save-profile`, `set-default-profile`, `queue-status`, `process-events`, `check-providers`) |
 | `db_stack/Dockerfile_pguam18.4` | Custom Postgres 18 image with pgvector, Apache AGE, pg_cron |
 | `db_stack/docker-compose.yml` | Compose stack; binds `db_stack/db_data/` as data dir |
 | `db_stack/schema.sql` | Full schema: tables, indexes, AGE graph, triggers |

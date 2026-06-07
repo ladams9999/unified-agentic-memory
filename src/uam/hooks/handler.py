@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import subprocess
 import sys
 import time
 from datetime import datetime, timezone
@@ -10,7 +11,7 @@ from typing import Any
 
 from ..config import settings
 from ..db import close_pool
-from ..events import log_event
+from ..event_queue import enqueue_event
 from ..models import HookEvent
 from .injector import session_start_payload, user_prompt_payload
 from .metrics import record_metric
@@ -74,7 +75,7 @@ def _tool_payload(payload: dict[str, Any]) -> dict[str, Any]:
 def _copilot_injection(event: HookEvent) -> dict[str, str] | None:
     if event.event_name != "SessionStart":
         return None
-    payload = session_start_payload(event.client)
+    payload = session_start_payload(event.client, profile_name=event.profile_name)
     return {"additionalContext": payload["system"]}
 
 
@@ -117,9 +118,23 @@ def _write_log(level: str, client: str, event_name: str, message: Any) -> None:
         handle.write(json.dumps(line) + "\n")
 
 
+def _spawn_processor() -> None:
+    command = [sys.executable, "-m", "uam.cli", "process-events", "--limit", "25"]
+    kwargs: dict[str, Any] = {
+        "stdout": subprocess.DEVNULL,
+        "stderr": subprocess.DEVNULL,
+        "cwd": Path(__file__).resolve().parents[3],
+        "start_new_session": True,
+    }
+    if hasattr(subprocess, "CREATE_NO_WINDOW"):
+        kwargs["creationflags"] = subprocess.CREATE_NO_WINDOW
+    subprocess.Popen(command, **kwargs)
+
+
 def run(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--client", required=True)
+    parser.add_argument("--profile")
     args = parser.parse_args(argv)
 
     start = time.perf_counter()
@@ -128,10 +143,15 @@ def run(argv: list[str] | None = None) -> int:
     try:
         payload = json.load(sys.stdin)
         event = normalize_payload(args.client, payload)
+        event.profile_name = args.profile
         event_name = event.event_name
         try:
-            log_event(event)
+            enqueue_event(event)
             success = True
+            try:
+                _spawn_processor()
+            except Exception as exc:  # noqa: BLE001
+                _write_log("warning", args.client, event_name, {"processor_error": str(exc)})
         except Exception as exc:  # noqa: BLE001
             _write_log("error", args.client, event_name, {"error": str(exc)})
 
@@ -140,9 +160,9 @@ def run(argv: list[str] | None = None) -> int:
             if args.client == "copilot":
                 injection = _copilot_injection(event)
             elif event.event_name == "SessionStart":
-                injection = session_start_payload(args.client)
+                injection = session_start_payload(args.client, profile_name=args.profile)
             elif event.event_name == "UserPromptSubmit" and event.user_prompt:
-                injection = user_prompt_payload(args.client, event.user_prompt)
+                injection = user_prompt_payload(args.client, event.user_prompt, profile_name=args.profile)
         except Exception as exc:  # noqa: BLE001
             _write_log("error", args.client, event_name, {"injection_error": str(exc)})
 

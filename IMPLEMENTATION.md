@@ -3,11 +3,14 @@
 ## Architecture overview
 
 ```text
-Hooks -> uam.hooks.handler -> uam.events.log_event -> Postgres relational events
-                                                -> Apache AGE projection
-                                                -> pgvector embeddings
+Hooks -> uam.hooks.handler -> uam.event_queue.enqueue_event -> local SQLite queue
+                                                -> background uam.event_processor.process_queued_events
+                                                -> uam.events.log_event -> Postgres relational events
+                                                                        -> Apache AGE projection
+                                                                        -> pgvector embeddings
 
 CLI / API / MCP / Hook injector -> uam.search.hybrid_search -> vector + FTS + cache
+Hook injector -> uam.response_cache -> cached hook responses
 
 Dream phase -> uam.dream.run_dream -> LLM -> parsed memory blocks -> uam.memories.upsert_memory
 ```
@@ -17,18 +20,22 @@ Dream phase -> uam.dream.run_dream -> LLM -> parsed memory blocks -> uam.memorie
 - `src/uam/`
   - `models.py`: Pydantic models for events, memories, search results, and dream runs
   - `config.py`: `pydantic-settings` environment-backed settings
+  - `profiles.py`: named runtime profile registry and default/selection logic
   - `db.py`: psycopg pool, AGE setup, migration runner
+  - `event_queue.py`: durable local SQLite queue for normalized hook events
+  - `event_processor.py`: async queue draining into relational/graph/vector ingest
   - `events.py`: append-only relational ingest plus projection and embedding
   - `graph.py`: AGE Cypher helpers
   - `projection.py`: relational-to-graph projection
   - `memories.py`: semantic memory CRUD
+  - `response_cache.py`: local cached hook-response storage
   - `vectors.py`: embedding persistence and similarity search
   - `search.py`: hybrid search, RRF reranking, and cache management
   - `dream.py`: dream prompt creation, parsing, watermarking, and cache invalidation
   - `hooks/`: handler, injector, and latency metrics
   - `api.py`: FastAPI service
   - `mcp_server.py`: FastMCP server
-  - `cli.py`: Typer CLI (`search`, `store`, `get`, `delete`, `list`, `confirm-idea`, `sessions`, `dream`, `migrate`, `install-hooks`, `check-providers`)
+  - `cli.py`: Typer CLI (`search`, `store`, `get`, `delete`, `list`, `confirm-idea`, `sessions`, `dream`, `migrate`, `install-hooks`, `profiles`, `save-profile`, `set-default-profile`, `queue-status`, `process-events`, `check-providers`)
 
 ## Database schema
 
@@ -42,7 +49,6 @@ Dream phase -> uam.dream.run_dream -> LLM -> parsed memory blocks -> uam.memorie
   - `uam.search_cache`: cached hybrid search results with TTL
   - `uam.schema_migrations`: applied migration tracking
 - `0002_age_graph.sql`
-  - Creates the Apache AGE graph `uam`; skipped automatically by the migration runner when AGE is not installed (e.g. Supabase)
   - Creates the Apache AGE graph `uam`; skipped automatically by the migration runner when AGE is not installed (e.g. Supabase)
 
 Apache AGE graph `uam` uses labels:
@@ -66,12 +72,29 @@ The Postgres image is built from `db_stack/Dockerfile_pguam18.4` and includes:
 
 1. A harness hook pipes JSON to `uam.hooks.handler`.
 2. The handler normalizes client-specific payload shapes into a `HookEvent`.
-3. `uam.events.log_event` writes the relational row first.
-4. The event is projected into AGE.
-5. An embedding is generated and stored in `uam.embeddings`.
-6. Latency metrics are appended to `logs/hook_metrics.jsonl` and summarized to `logs/hook_metrics_summary.json`.
+3. The handler enqueues the normalized event into `state/uam.sqlite3` with stable UUIDs and profile metadata.
+4. The handler serves a cached injection response immediately when one is available.
+5. The handler triggers a background `process-events` run and exits `0`.
+6. `uam.event_processor.process_queued_events()` drains queued rows, resolves the requested runtime profile, and calls `uam.events.log_event`.
+7. `uam.events.log_event` writes the relational row first, then projects the event into AGE and stores an embedding in `uam.embeddings`.
+8. The processor refreshes cached hook responses after successful ingest.
+9. Latency metrics are appended to `logs/hook_metrics.jsonl` and summarized to `logs/hook_metrics_summary.json`.
 
-Failures are logged locally and the handler still exits `0`.
+Queue write failures and processor failures are logged locally; the handler still exits `0`.
+
+## Runtime profiles and cached injections
+
+`src/uam/profiles.py` defines a JSON-backed profile registry stored at `uam-profiles.json`. Profiles are selected in this order:
+
+1. explicit `--profile` from a hook command
+2. `UAM_ACTIVE_PROFILE`
+3. registry default profile
+4. `UAM_DEFAULT_PROFILE`
+5. implicit `default`
+
+Profiles currently scope the memory prefix used for session-start injection, which lets separate workflows use different semantic profile trees such as `profiles/focused/` and `profiles/review/`.
+
+`src/uam/response_cache.py` stores cached hook responses in the same local SQLite state file as the offline queue. `session_start_payload()` and `user_prompt_payload()` return cached content immediately when it exists, populate the cache on misses, and `process_queued_events()` refreshes cached entries after replayed events reach the relational store.
 
 ## Search design
 
@@ -163,23 +186,26 @@ Verified: unquoted path produces `os error 2` (file not found); quoted path runs
 
 ### Injector wiring
 
-`src/uam/hooks/injector.py` defines two functions that were not called anywhere before this work:
+`src/uam/hooks/injector.py` now defines cached response builders and refresh logic:
 
-- `session_start_payload(client)` — loads `profiles/` memories and returns `{"system": "<content>"}` for injection into the Claude Code system prompt.
-- `user_prompt_payload(client, query)` — runs hybrid search against the query and returns `{"userPrompt": "<results>"}` for injection before the user message.
+- `session_start_payload(client, profile_name)` — returns cached `{"system": ...}` content when available, otherwise builds from the selected profile prefix and stores it in the local response cache.
+- `user_prompt_payload(client, query, profile_name)` — returns cached `{"userPrompt": ...}` content when available, otherwise runs hybrid search, stores the rendered result, and returns it.
+- `refresh_cached_responses()` — recomputes all cached session-start and user-prompt payloads after queued events are processed.
 
-`src/uam/hooks/handler.py` was updated to call these after `log_event`:
+`src/uam/hooks/handler.py` now enqueues first and then calls the injector:
 
 ```python
+enqueue_event(event)
+_spawn_processor()
 if event.event_name == "SessionStart":
-    injection = session_start_payload(args.client)
+    injection = session_start_payload(args.client, profile_name=args.profile)
 elif event.event_name == "UserPromptSubmit" and event.user_prompt:
-    injection = user_prompt_payload(args.client, event.user_prompt)
+    injection = user_prompt_payload(args.client, event.user_prompt, profile_name=args.profile)
 if injection is not None:
     print(json.dumps(injection))
 ```
 
-Injection failures are caught separately from the logging path so a bad DB connection cannot suppress the `{"system": ...}` or `{"userPrompt": ...}` response from a cached or previously-working call. Both paths exit `0` regardless.
+Injection failures are caught separately from queueing so a bad DB connection cannot suppress the `{"system": ...}` or `{"userPrompt": ...}` response from a cached or previously-working call. Both paths exit `0` regardless.
 
 ### Deployment architecture
 
@@ -192,9 +218,9 @@ This is documented in the README's "Installing in Claude Code" section.
 
 ### Verification results
 
-All six hook event types (`SessionStart`, `UserPromptSubmit`, `PreToolUse`, `PostToolUse`, `Stop`, `SessionEnd`) were tested by piping representative Claude Code payloads to the handler. All exit `0`. Malformed JSON and empty stdin also exit `0`. Errors are written to `logs/hook-handler.log`.
+All six hook event types (`SessionStart`, `UserPromptSubmit`, `PreToolUse`, `PostToolUse`, `Stop`, `SessionEnd`) were tested by piping representative Claude Code payloads to the handler. All exit `0`. Malformed JSON and empty stdin also exit `0`. Events are queued locally first, then drained asynchronously; errors are written to `logs/hook-handler.log`.
 
-Injection output (`{"system": ...}` and `{"userPrompt": ...}`) requires a live database and stored memories. With the DB unreachable, injection silently fails and the handler still exits `0` with no stdout — Claude Code proceeds normally with no injected context.
+Injection output (`{"system": ...}` and `{"userPrompt": ...}`) now prefers cached content. With the DB unreachable, the handler can still return cached context and queue the new event for later processing; if no cache exists it exits `0` with no stdout and Claude Code proceeds normally.
 
 ## GitHub Copilot CLI integration
 
@@ -239,11 +265,11 @@ Copilot CLI does not use the same stdout contract as Claude Code. Instead:
 - `sessionStart` can inject context with `{"additionalContext": "..."}`.
 - `userPromptSubmitted` is logged, but Copilot ignores stdout for that event.
 
-The handler now branches on `--client copilot` and converts `session_start_payload()` from the internal `{"system": ...}` format into Copilot's `{"additionalContext": ...}` output. Other clients keep their existing `{"system": ...}` and `{"userPrompt": ...}` behavior.
+The handler now branches on `--client copilot` and converts `session_start_payload()` from the internal `{"system": ...}` format into Copilot's `{"additionalContext": ...}` output. Other clients keep their existing `{"system": ...}` and `{"userPrompt": ...}` behavior, and all of them can pin a named runtime profile with `--profile`.
 
 ### Verification results
 
-Copilot session-start payloads were validated with the documented hook schema, including millisecond timestamps and top-level `toolName` / `toolArgs` fields. The handler now emits `{"additionalContext": ...}` for Copilot `sessionStart`, still exits `0` on failures, and continues writing errors to `logs/hook-handler.log`.
+Copilot session-start payloads were validated with the documented hook schema, including millisecond timestamps and top-level `toolName` / `toolArgs` fields. The handler now emits `{"additionalContext": ...}` for Copilot `sessionStart`, still exits `0` on failures, queues events locally first, and continues writing errors to `logs/hook-handler.log`.
 
 ## Python runtime note
 

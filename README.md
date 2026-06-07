@@ -90,7 +90,12 @@ UAM will detect that AGE is not installed and skip the AGE migration (`0003_age_
 - `uv run uam sessions`
 - `uv run uam dream`
 - `uv run uam confirm-idea "topics/postgres.md"`
-- `uv run uam install-hooks --client claude-code --target-dir .`
+- `uv run uam profiles`
+- `uv run uam save-profile focused --memory-prefix profiles/focused`
+- `uv run uam set-default-profile focused`
+- `uv run uam queue-status`
+- `uv run uam process-events --limit 50`
+- `uv run uam install-hooks --client claude-code --target-dir . --profile focused`
 - `uv run uam check-providers`
 
 ### API
@@ -131,7 +136,22 @@ The shared injector contract is:
 - GitHub Copilot CLI `sessionStart` emits `{"additionalContext": "..."}`.
 - GitHub Copilot CLI `userPromptSubmitted` is logged, but Copilot ignores stdout for that event.
 
-Hook handlers are deterministic and model-free. They normalize payloads, log events, capture latency metrics, and always exit `0` so agent sessions are not blocked on local failures.
+Hook handlers are deterministic and model-free. They normalize payloads, enqueue events locally, trigger async processing, capture latency metrics, and always exit `0` so agent sessions are not blocked on local failures.
+
+## Runtime profiles and offline processing
+
+UAM now supports named runtime profiles backed by `uam-profiles.json`. A profile currently defines the memory prefix used for session-start injection, and the hook installer can bake a selected profile into generated hook commands.
+
+Useful commands:
+
+- `uv run uam profiles` — list the effective default profile and all known profiles
+- `uv run uam save-profile focused --memory-prefix profiles/focused` — create or update a profile
+- `uv run uam set-default-profile focused` — set the default profile used when hooks do not pass `--profile`
+- `uv run uam install-hooks --client claude-code --target-dir . --profile focused` — install hooks pinned to a specific profile
+
+Hook events are first written to a local SQLite state file at `state/uam.sqlite3`, then processed asynchronously into Postgres, AGE, and pgvector. This keeps hook latency low and preserves events when the active profile or database is unavailable.
+
+Cached hook responses live in the same local state file. Session-start and user-prompt injections return cached content immediately when available, and queued event processing refreshes those cache entries afterward.
 
 See [Installing in Claude Code](#installing-in-claude-code) and [Installing in GitHub Copilot CLI](#installing-in-github-copilot-cli) below for full instructions.
 
@@ -166,7 +186,7 @@ Set `VITE_API_BASE` if the API is not running at `http://127.0.0.1:8000`.
 UAM ships a CLI command that reads the correct template for your harness, substitutes the UAM project root, and writes the hook configuration to the right place in any project directory.
 
 ```
-uam install-hooks --client <harness> --target-dir <path/to/project>
+uam install-hooks --client <harness> --target-dir <path/to/project> [--profile <profile-name>]
 ```
 
 | `--client` | File written into `--target-dir` |
@@ -182,6 +202,9 @@ The command is idempotent: if the destination file already exists and its conten
 ```bash
 # Install Copilot hooks into ~/projects/my-app
 uv run uam install-hooks --client copilot --target-dir ~/projects/my-app
+
+# Install Claude Code hooks using a named runtime profile
+uv run uam install-hooks --client claude-code --target-dir . --profile focused
 
 # Install Claude Code hooks into the current directory
 uv run uam install-hooks --client claude-code --target-dir .
@@ -200,7 +223,7 @@ Claude Code fires hook events before and after every tool call, at session start
 
 ### Prerequisites
 
-Complete the Setup steps at the top of this file first: Docker stack running, `uv sync --dev` done, `uv run uam migrate` applied. The handler always exits `0` so an unreachable database will not interrupt any session — but nothing is stored or injected until the database is reachable.
+Complete the Setup steps at the top of this file first: Docker stack running, `uv sync --dev` done, `uv run uam migrate` applied. The handler always exits `0` so an unreachable database will not interrupt any session — events are queued locally either way, and cached injection content is returned when available.
 
 ### Where to install
 
@@ -243,12 +266,13 @@ Restart Claude Code in the observed project. Hooks take effect on the next sessi
 
 ### Verifying
 
-After opening a session in the observed project, confirm UAM is receiving events:
+After opening a session in the observed project, confirm UAM is receiving and draining events:
 
 ```bash
 # In UAM's directory:
-uv run uam sessions          # should show the new session
-tail -f logs/hook-handler.log  # live event stream
+uv run uam queue-status      # should show pending/done counts
+uv run uam process-events    # optional manual drain if you do not want to wait for the background processor
+uv run uam sessions          # should show the new session once processing completes
 ```
 
 To confirm injection is working, watch stdout from the handler directly:
@@ -256,21 +280,21 @@ To confirm injection is working, watch stdout from the handler directly:
 ```bash
 echo '{"hookEvent":"SessionStart","sessionId":"<real-uuid>","cwd":"/your/project"}' \
   | uv run python -m uam.hooks.handler --client claude-code
-# should print {"system": "..."} once there are profile memories stored
+# should print {"system": "..."} once cached or stored profile memories exist
 ```
 
 ### What each event does
 
-| Event | Stored in DB | Output to Claude Code |
+| Event | Queued / processed | Output to Claude Code |
 |---|---|---|
-| `SessionStart` | yes | `{"system": "..."}` — profile memories injected into system prompt |
-| `UserPromptSubmit` | yes | `{"userPrompt": "..."}` — relevant memories prepended to user message |
-| `PreToolUse` | yes | none |
-| `PostToolUse` | yes | none |
-| `Stop` | yes | none |
-| `SessionEnd` | yes | none |
+| `SessionStart` | queued locally, then processed async | `{"system": "..."}` — profile memories injected into system prompt |
+| `UserPromptSubmit` | queued locally, then processed async | `{"userPrompt": "..."}` — relevant memories prepended to user message |
+| `PreToolUse` | queued locally, then processed async | none |
+| `PostToolUse` | queued locally, then processed async | none |
+| `Stop` | queued locally, then processed async | none |
+| `SessionEnd` | queued locally, then processed async | none |
 
-Injection (`SessionStart` and `UserPromptSubmit`) only runs when the database is reachable. If it fails the event is still logged locally and the handler exits `0`.
+Injection (`SessionStart` and `UserPromptSubmit`) serves cached content immediately when available. Fresh cache entries are written from the live DB on a miss, and queued event processing refreshes them afterward.
 
 ## Installing in GitHub Copilot CLI
 
@@ -352,7 +376,7 @@ Create `.github/hooks/uam-memory.json` in the observed project. Replace `<UAM_PR
 }
 ```
 
-The matching template lives at `hooks/copilot/hooks.json`.
+The matching template lives at `hooks/copilot/hooks.json`. Append `--profile <name>` to each command if you want Copilot hooks pinned to a named runtime profile instead of the current default.
 
 ### Restarting
 
@@ -360,32 +384,33 @@ Restart Copilot CLI in the observed project. Hook configuration is loaded when t
 
 ### Verifying
 
-After opening a new Copilot CLI session in the observed project, confirm UAM is receiving events:
+After opening a new Copilot CLI session in the observed project, confirm UAM is receiving and draining events:
 
 ```powershell
+uv run uam queue-status
+uv run uam process-events
 uv run uam sessions
-Get-Content logs\hook-handler.log -Wait
 ```
 
 To test the handler directly:
 
 ```powershell
 '{"hook_event_name":"sessionStart","sessionId":"<real-uuid>","timestamp":1716400000123,"cwd":"C:\\your\\project"}' | uv run python -m uam.hooks.handler --client copilot
-# should print {"additionalContext": "..."} once there are profile memories stored
+# should print {"additionalContext": "..."} once cached or stored profile memories exist
 ```
 
 ### What each event does
 
-| Event | Stored in DB | Output to Copilot CLI |
+| Event | Queued / processed | Output to Copilot CLI |
 |---|---|---|
-| `sessionStart` | yes | `{"additionalContext": "..."}` — profile memories injected into the session |
-| `userPromptSubmitted` | yes | none — Copilot ignores stdout for this event |
-| `preToolUse` | yes | none |
-| `postToolUse` | yes | none |
-| `agentStop` | yes | none |
-| `sessionEnd` | yes | none |
+| `sessionStart` | queued locally, then processed async | `{"additionalContext": "..."}` — profile memories injected into the session |
+| `userPromptSubmitted` | queued locally, then processed async | none — Copilot ignores stdout for this event |
+| `preToolUse` | queued locally, then processed async | none |
+| `postToolUse` | queued locally, then processed async | none |
+| `agentStop` | queued locally, then processed async | none |
+| `sessionEnd` | queued locally, then processed async | none |
 
-As with Claude Code, database failures never block the session: the handler logs locally and exits `0`.
+As with Claude Code, database failures never block the session: the handler queues locally, serves cached context when it can, and exits `0`.
 
 ## Local smoke sequence
 
@@ -399,11 +424,14 @@ Prerequisites: Docker Desktop, `uv`, Node.js, and Ollama with `nomic-embed-text`
 4. `docker compose up -d db`
 5. `cd .. && uv sync --dev`
 6. `uv run uam migrate`
-7. Pipe a sample hook payload and confirm injection output:
+7. `uv run uam save-profile focused --memory-prefix profiles/focused`
+8. Pipe a sample hook payload and confirm injection output:
    ```bash
    echo '{"hookEvent":"SessionStart","sessionId":"00000000-0000-7000-8000-000000000001","cwd":"/your/project"}' \
-     | uv run python -m uam.hooks.handler --client claude-code
+     | uv run python -m uam.hooks.handler --client claude-code --profile focused
    # expect: {"system": "..."}
    ```
-8. `uv run uam search "sample"`
-9. `uv run uam dream --dry-run`
+9. `uv run uam queue-status`
+10. `uv run uam process-events`
+11. `uv run uam search "sample"`
+12. `uv run uam dream --dry-run`

@@ -1,10 +1,10 @@
 {
   "hooks": {
-    "SessionStart": "uv run --directory \"<UAM_PROJECT_DIR>\" python -m uam.hooks.handler --client codex",
-    "UserPromptSubmit": "uv run --directory \"<UAM_PROJECT_DIR>\" python -m uam.hooks.handler --client codex",
-    "PreToolUse": "uv run --directory \"<UAM_PROJECT_DIR>\" python -m uam.hooks.handler --client codex",
-    "PostToolUse": "uv run --directory \"<UAM_PROJECT_DIR>\" python -m uam.hooks.handler --client codex",
-    "Stop": "uv run --directory \"<UAM_PROJECT_DIR>\" python -m uam.hooks.handler --client codex",
-    "SessionEnd": "uv run --directory \"<UAM_PROJECT_DIR>\" python -m uam.hooks.handler --client codex"
+    "SessionStart": "uv run --directory \"<UAM_PROJECT_DIR>\" python -m uam.hooks.handler --client codex<UAM_PROFILE_ARGS>",
+    "UserPromptSubmit": "uv run --directory \"<UAM_PROJECT_DIR>\" python -m uam.hooks.handler --client codex<UAM_PROFILE_ARGS>",
+    "PreToolUse": "uv run --directory \"<UAM_PROJECT_DIR>\" python -m uam.hooks.handler --client codex<UAM_PROFILE_ARGS>",
+    "PostToolUse": "uv run --directory \"<UAM_PROJECT_DIR>\" python -m uam.hooks.handler --client codex<UAM_PROFILE_ARGS>",
+    "Stop": "uv run --directory \"<UAM_PROJECT_DIR>\" python -m uam.hooks.handler --client codex<UAM_PROFILE_ARGS>",
+    "SessionEnd": "uv run --directory \"<UAM_PROJECT_DIR>\" python -m uam.hooks.handler --client codex<UAM_PROFILE_ARGS>"
   }
 }

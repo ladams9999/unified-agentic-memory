@@ -15,9 +15,10 @@ For full local verification, run the Python tests and frontend build first, then
 
 ## High-level architecture
 
-- `src/uam/events.py` is the central ingest path: hook payloads are normalized into `HookEvent`, written to `uam.events`, projected into Apache AGE, and embedded into `uam.embeddings`.
+- `src/uam/hooks/handler.py` is the fast capture path: hook payloads are normalized into `HookEvent`, queued in `src/uam/event_queue.py`, and then drained asynchronously by `src/uam/event_processor.py` into `src/uam/events.py` for relational ingest, graph projection, and embeddings.
 - `src/uam/search.py` performs hybrid retrieval by combining pgvector similarity search (`src/uam/vectors.py`) with Postgres full-text search over `content_tsv`, then merges results with Reciprocal Rank Fusion and caches them in `uam.search_cache`.
 - `src/uam/dream.py` reads events since the previous watermark, calls the configured Ollama model, parses fenced `memory` blocks, upserts them through `src/uam/memories.py`, and records the run in `uam.dream_runs`.
+- `src/uam/hooks/injector.py` now serves cached hook responses from `src/uam/response_cache.py` when available and refreshes them after queued event processing succeeds.
 - The same core library is exposed through multiple surfaces:
   - CLI in `src/uam/cli.py`
   - FastAPI app in `src/uam/api.py`

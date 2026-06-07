@@ -48,10 +48,10 @@ def test_normalize_copilot_cli_payload():
 
 def test_handler_exits_zero_and_logs(monkeypatch, tmp_path):
     monkeypatch.setattr(handler.settings, "local_log_dir", tmp_path)
-    def fail_log_event(event):
+    def fail_enqueue(event):
         raise RuntimeError("boom")
 
-    monkeypatch.setattr(handler, "log_event", fail_log_event)
+    monkeypatch.setattr(handler, "enqueue_event", fail_enqueue)
     stdin = Path(tmp_path / "payload.json")
     stdin.write_text(json.dumps({"eventName": "Stop"}), encoding="utf-8")
 
@@ -108,11 +108,12 @@ def test_cwd_workspace_alias_normalized():
 
 
 def test_copilot_session_start_uses_additional_context(monkeypatch, capsys):
-    monkeypatch.setattr(handler, "log_event", lambda event: None)
+    monkeypatch.setattr(handler, "enqueue_event", lambda event: event)
+    monkeypatch.setattr(handler, "_spawn_processor", lambda: None)
     monkeypatch.setattr(
         handler,
         "session_start_payload",
-        lambda client: {"system": "profile memory"},
+        lambda client, profile_name=None: {"system": "profile memory"},
     )
 
     stdin = json.dumps(
@@ -130,3 +131,61 @@ def test_copilot_session_start_uses_additional_context(monkeypatch, capsys):
 
     assert code == 0
     assert output == '{"additionalContext": "profile memory"}'
+
+
+def test_handler_passes_profile_to_injection(monkeypatch, capsys):
+    monkeypatch.setattr(handler, "enqueue_event", lambda event: event)
+    monkeypatch.setattr(handler, "_spawn_processor", lambda: None)
+    seen = {}
+
+    def fake_session_start_payload(client, profile_name=None):
+        seen["client"] = client
+        seen["profile_name"] = profile_name
+        return {"system": "profile memory"}
+
+    monkeypatch.setattr(handler, "session_start_payload", fake_session_start_payload)
+
+    stdin = json.dumps(
+        {
+            "eventName": "SessionStart",
+            "sessionId": "018fc5bb-53d4-7b80-95a0-e1b64116f0c0",
+        }
+    )
+    monkeypatch.setattr(sys, "stdin", io.StringIO(stdin))
+
+    code = handler.run(["--client", "claude-code", "--profile", "focus"])
+    capsys.readouterr()
+
+    assert code == 0
+    assert seen == {"client": "claude-code", "profile_name": "focus"}
+
+
+def test_handler_enqueues_normalized_event(monkeypatch):
+    captured = {}
+
+    def fake_enqueue(event):
+        captured["event"] = event
+        return event
+
+    monkeypatch.setattr(handler, "enqueue_event", fake_enqueue)
+    monkeypatch.setattr(handler, "_spawn_processor", lambda: None)
+    monkeypatch.setattr(sys, "stdin", io.StringIO(json.dumps({"eventName": "Stop"})))
+
+    code = handler.run(["--client", "claude-code", "--profile", "focus"])
+
+    assert code == 0
+    assert captured["event"].event_name == "Stop"
+    assert captured["event"].profile_name == "focus"
+
+
+def test_handler_spawns_processor_after_enqueue(monkeypatch):
+    calls = []
+
+    monkeypatch.setattr(handler, "enqueue_event", lambda event: event)
+    monkeypatch.setattr(handler, "_spawn_processor", lambda: calls.append("spawned"))
+    monkeypatch.setattr(sys, "stdin", io.StringIO(json.dumps({"eventName": "Stop"})))
+
+    code = handler.run(["--client", "claude-code"])
+
+    assert code == 0
+    assert calls == ["spawned"]
