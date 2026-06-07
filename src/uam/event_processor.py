@@ -4,6 +4,7 @@ from typing import Any
 
 from .event_queue import claim_next_event, count_queued_events, mark_event_failed, mark_event_processed, queue_status_counts
 from .events import log_event
+from .hooks.injector import refresh_cached_responses
 from .profiles import resolve_profile
 
 
@@ -23,7 +24,11 @@ def process_queued_events(*, limit: int = 50, retry_failed: bool = False) -> dic
             mark_event_failed(queued.queue_id, str(exc))
             failed += 1
     counts = queue_status_counts()
+    cache_summary = {"refreshed": 0}
+    if processed:
+        cache_summary = refresh_cached_responses()
     counts["processed_this_run"] = processed
     counts["failed_this_run"] = failed
     counts["remaining"] = count_queued_events() + count_queued_events(status="failed")
+    counts["refreshed_cached_responses"] = cache_summary["refreshed"]
     return counts
