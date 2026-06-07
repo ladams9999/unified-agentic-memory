@@ -8,6 +8,7 @@ The items below were completed and verified in this implementation pass.
 
 - [x] **SP1** — Added named runtime profiles via `src/uam/profiles.py` with registry-backed listing, save/default commands, implicit fallback behavior, and profile-aware hook installation/injection through `src/uam/cli.py`, `src/uam/hooks/handler.py`, and `src/uam/hooks/injector.py`. Added unit coverage in `tests/test_profiles.py`, `tests/test_cli.py`, and `tests/test_hooks.py`.
 - [x] **SP2** — Added durable local event queueing in `src/uam/event_queue.py` backed by SQLite WAL storage at `state/uam.sqlite3`; hook handlers now enqueue normalized events with stable IDs before any heavier work, preserving events for later processing. Added unit coverage in `tests/test_event_queue.py` and updated hook tests accordingly.
+- [x] **SP3** — Added asynchronous queued processing in `src/uam/event_processor.py`; hook handlers now spawn a background processor after enqueue, and the CLI exposes `process-events` plus `queue-status` for replay/flush visibility. Queue records now track processing lifecycle fields and retry-safe failure status. Added unit coverage in `tests/test_event_processor.py`, `tests/test_event_queue.py`, and `tests/test_hooks.py`.
 
 ## Goal 3: Remote Postgres / Supabase Support
 

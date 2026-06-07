@@ -10,6 +10,8 @@ import typer
 from .db import apply_migrations, close_pool, get_connection, project_root
 from .dream import run_dream
 from .embeddings import get_embedding_provider
+from .event_processor import process_queued_events
+from .event_queue import queue_status_counts
 from .events import list_session_summaries
 from .llm import get_llm_provider
 from .memories import confirm_idea, delete_memory, get_memory, list_memories, upsert_memory
@@ -87,6 +89,16 @@ def confirm_idea_command(path: str) -> None:
 @app.command()
 def sessions(limit: int = 20) -> None:
     typer.echo(json.dumps(list_session_summaries(limit=limit), indent=2))
+
+
+@app.command("queue-status")
+def queue_status_command() -> None:
+    typer.echo(json.dumps(queue_status_counts(), indent=2))
+
+
+@app.command("process-events")
+def process_events_command(limit: int = 50, retry_failed: bool = False) -> None:
+    typer.echo(json.dumps(process_queued_events(limit=limit, retry_failed=retry_failed), indent=2))
 
 
 @app.command()

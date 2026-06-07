@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import subprocess
 import sys
 import time
 from datetime import datetime, timezone
@@ -117,6 +118,19 @@ def _write_log(level: str, client: str, event_name: str, message: Any) -> None:
         handle.write(json.dumps(line) + "\n")
 
 
+def _spawn_processor() -> None:
+    command = [sys.executable, "-m", "uam.cli", "process-events", "--limit", "25"]
+    kwargs: dict[str, Any] = {
+        "stdout": subprocess.DEVNULL,
+        "stderr": subprocess.DEVNULL,
+        "cwd": Path(__file__).resolve().parents[3],
+        "start_new_session": True,
+    }
+    if hasattr(subprocess, "CREATE_NO_WINDOW"):
+        kwargs["creationflags"] = subprocess.CREATE_NO_WINDOW
+    subprocess.Popen(command, **kwargs)
+
+
 def run(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--client", required=True)
@@ -134,6 +148,10 @@ def run(argv: list[str] | None = None) -> int:
         try:
             enqueue_event(event)
             success = True
+            try:
+                _spawn_processor()
+            except Exception as exc:  # noqa: BLE001
+                _write_log("warning", args.client, event_name, {"processor_error": str(exc)})
         except Exception as exc:  # noqa: BLE001
             _write_log("error", args.client, event_name, {"error": str(exc)})
 
