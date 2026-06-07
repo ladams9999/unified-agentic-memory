@@ -7,6 +7,7 @@ The items below were completed and verified in this implementation pass.
 ## Active implementation: setup profiles and offline event storage
 
 - [x] **SP1** — Added named runtime profiles via `src/uam/profiles.py` with registry-backed listing, save/default commands, implicit fallback behavior, and profile-aware hook installation/injection through `src/uam/cli.py`, `src/uam/hooks/handler.py`, and `src/uam/hooks/injector.py`. Added unit coverage in `tests/test_profiles.py`, `tests/test_cli.py`, and `tests/test_hooks.py`.
+- [x] **SP2** — Added durable local event queueing in `src/uam/event_queue.py` backed by SQLite WAL storage at `state/uam.sqlite3`; hook handlers now enqueue normalized events with stable IDs before any heavier work, preserving events for later processing. Added unit coverage in `tests/test_event_queue.py` and updated hook tests accordingly.
 
 ## Goal 3: Remote Postgres / Supabase Support
 

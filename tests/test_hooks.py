@@ -48,10 +48,10 @@ def test_normalize_copilot_cli_payload():
 
 def test_handler_exits_zero_and_logs(monkeypatch, tmp_path):
     monkeypatch.setattr(handler.settings, "local_log_dir", tmp_path)
-    def fail_log_event(event):
+    def fail_enqueue(event):
         raise RuntimeError("boom")
 
-    monkeypatch.setattr(handler, "log_event", fail_log_event)
+    monkeypatch.setattr(handler, "enqueue_event", fail_enqueue)
     stdin = Path(tmp_path / "payload.json")
     stdin.write_text(json.dumps({"eventName": "Stop"}), encoding="utf-8")
 
@@ -108,7 +108,7 @@ def test_cwd_workspace_alias_normalized():
 
 
 def test_copilot_session_start_uses_additional_context(monkeypatch, capsys):
-    monkeypatch.setattr(handler, "log_event", lambda event: None)
+    monkeypatch.setattr(handler, "enqueue_event", lambda event: event)
     monkeypatch.setattr(
         handler,
         "session_start_payload",
@@ -133,7 +133,7 @@ def test_copilot_session_start_uses_additional_context(monkeypatch, capsys):
 
 
 def test_handler_passes_profile_to_injection(monkeypatch, capsys):
-    monkeypatch.setattr(handler, "log_event", lambda event: None)
+    monkeypatch.setattr(handler, "enqueue_event", lambda event: event)
     seen = {}
 
     def fake_session_start_payload(client, profile_name=None):
@@ -156,3 +156,20 @@ def test_handler_passes_profile_to_injection(monkeypatch, capsys):
 
     assert code == 0
     assert seen == {"client": "claude-code", "profile_name": "focus"}
+
+
+def test_handler_enqueues_normalized_event(monkeypatch):
+    captured = {}
+
+    def fake_enqueue(event):
+        captured["event"] = event
+        return event
+
+    monkeypatch.setattr(handler, "enqueue_event", fake_enqueue)
+    monkeypatch.setattr(sys, "stdin", io.StringIO(json.dumps({"eventName": "Stop"})))
+
+    code = handler.run(["--client", "claude-code", "--profile", "focus"])
+
+    assert code == 0
+    assert captured["event"].event_name == "Stop"
+    assert captured["event"].profile_name == "focus"

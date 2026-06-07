@@ -35,6 +35,7 @@ class Settings(BaseSettings):
     search_cache_ttl_seconds: int = 900
     hook_metrics_window: int = 200
     local_log_dir: Path = Path("logs")
+    local_state_path: Path = Path("state/uam.sqlite3")
     profiles_path: Path = Path("uam-profiles.json")
     default_profile: str = "default"
     active_profile: str = ""

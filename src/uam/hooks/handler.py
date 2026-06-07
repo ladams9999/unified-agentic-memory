@@ -10,7 +10,7 @@ from typing import Any
 
 from ..config import settings
 from ..db import close_pool
-from ..events import log_event
+from ..event_queue import enqueue_event
 from ..models import HookEvent
 from .injector import session_start_payload, user_prompt_payload
 from .metrics import record_metric
@@ -132,7 +132,7 @@ def run(argv: list[str] | None = None) -> int:
         event.profile_name = args.profile
         event_name = event.event_name
         try:
-            log_event(event)
+            enqueue_event(event)
             success = True
         except Exception as exc:  # noqa: BLE001
             _write_log("error", args.client, event_name, {"error": str(exc)})
