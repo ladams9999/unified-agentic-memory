@@ -4,6 +4,10 @@ The items below were completed and verified in this implementation pass.
 
 ---
 
+## Active implementation: setup profiles and offline event storage
+
+No tasks completed yet in this implementation pass.
+
 ## Goal 3: Remote Postgres / Supabase Support
 
 - [x] **G3-1** — Added `db_sslmode: str = "prefer"` and `disable_graph: bool = False` to `Settings` in `src/uam/config.py`; both `database_url` and `postgres_database_url` now append `sslmode={db_sslmode}`; updated `db_stack/.env.example` with new vars and comments.
